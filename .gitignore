@@ -1,0 +1,38 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build output
+bin/
+obj/
+
+# Build results
+[Bb]in/
+[Oo]bj/
+*.exe
+*.pdb
+*.dll
+*.log
+
+# NuGet
+packages/
+*.nupkg
+project.lock.json
+project.assets.json
+
+# Resharper
+_ReSharper*/
+*.DotSettings.user
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# IDE folders
+.vscode/
+
+# Config sensitive
+.env
