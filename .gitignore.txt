@@ -1,0 +1,54 @@
+# Build results
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio files
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build outputs
+*.dll
+*.exe
+*.pdb
+*.cache
+*.log
+
+# NuGet
+*.nupkg
+packages/
+project.lock.json
+project.assets.json
+*.nuget.props
+*.nuget.targets
+
+# Visual Studio Code (if used)
+.vscode/
+SmartWorkSpaceVS.csproj
+
+# Resharper / Rider
+_ReSharper*/
+*.DotSettings.user
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# SQL / temp logs
+*.mdf
+*.ldf
+
+# Sensitive / env files
+.env
+appsettings.Development.json
+
+# Test results
+TestResults/
+coverage/
+
+# Publish output
+publish/
