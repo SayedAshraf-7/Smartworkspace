@@ -1,77 +1,175 @@
 -- ============================================================
--- FILE: DatabaseMigration.sql
--- Run this ONCE in SSMS AFTER you have already run CreateDB.sql.
--- It upgrades the existing SmartWorkspaceDB schema to support
--- all new application features.
+-- SMART WORKSPACE DATABASE - COMPLETE SINGLE FILE
+-- Run this entire script once in SQL Server Management Studio
 -- ============================================================
+
+-- Create Database
+CREATE DATABASE SmartWorkspaceDB;
+GO
 
 USE SmartWorkspaceDB;
 GO
 
--- ────────────────────────────────────────────────────────────
--- 1. ALTER Member: drop old columns, add new ones
--- ────────────────────────────────────────────────────────────
+-- ============================================================
+-- TABLE: Member
+-- ============================================================
 
--- Drop CompanyName
-ALTER TABLE Member DROP COLUMN CompanyName;
+CREATE TABLE Member (
+    MemberID              INT IDENTITY(1,1) PRIMARY KEY,
+    FullName              NVARCHAR(100) NOT NULL,
+    DigitalID             NVARCHAR(50) NULL,
+    CorporateAffiliation  NVARCHAR(150) NULL,
+    TotalReservedHours    INT NOT NULL DEFAULT 0
+);
 GO
 
--- Drop Email
-ALTER TABLE Member DROP COLUMN Email;
+-- ============================================================
+-- TABLE: Workspace
+-- ============================================================
+
+CREATE TABLE Workspace (
+    WorkspaceID   INT IDENTITY(1,1) PRIMARY KEY,
+    WorkspaceType NVARCHAR(50) NOT NULL,
+    HubName       NVARCHAR(100) NOT NULL,
+    PricePerHour  DECIMAL(10,2) NOT NULL,
+    Status        NVARCHAR(20) NOT NULL
+);
 GO
 
--- Add new identity & affiliation fields
-ALTER TABLE Member
-    ADD DigitalID            NVARCHAR(50)  NULL,
-        CorporateAffiliation NVARCHAR(150) NULL,
-        TotalReservedHours   INT NOT NULL DEFAULT 0;
+-- ============================================================
+-- TABLE: Reservation
+-- ============================================================
+
+CREATE TABLE Reservation (
+    ReservationID   INT IDENTITY(1,1) PRIMARY KEY,
+    MemberID        INT NOT NULL,
+    WorkspaceID     INT NOT NULL,
+    ReservationDate DATE NOT NULL,
+    HoursReserved   INT NOT NULL,
+    Status          NVARCHAR(20) NOT NULL DEFAULT 'Running',
+
+    CONSTRAINT CK_Reservation_Status
+        CHECK (Status IN ('Running', 'Finished')),
+
+    CONSTRAINT FK_Reservation_Member
+        FOREIGN KEY (MemberID)
+        REFERENCES Member(MemberID)
+        ON DELETE CASCADE,
+
+    CONSTRAINT FK_Reservation_Workspace
+        FOREIGN KEY (WorkspaceID)
+        REFERENCES Workspace(WorkspaceID)
+        ON DELETE CASCADE
+);
 GO
 
--- ────────────────────────────────────────────────────────────
--- 2. ALTER Reservation: add Status column
--- ────────────────────────────────────────────────────────────
+-- ============================================================
+-- TABLE: Equipment
+-- ============================================================
 
-ALTER TABLE Reservation
-    ADD Status NVARCHAR(20) NOT NULL DEFAULT 'Running';
+CREATE TABLE Equipment (
+    EquipmentID    INT IDENTITY(1,1) PRIMARY KEY,
+    EquipmentName  NVARCHAR(100) NOT NULL,
+    EquipmentType  NVARCHAR(50) NOT NULL DEFAULT 'General',
+    HubName        NVARCHAR(100) NOT NULL DEFAULT 'Unknown'
+);
 GO
 
-ALTER TABLE Reservation
-    ADD CONSTRAINT CK_Reservation_Status
-        CHECK (Status IN ('Running', 'Finished'));
+-- ============================================================
+-- TABLE: ReservationEquipment
+-- ============================================================
+
+CREATE TABLE ReservationEquipment (
+    ID            INT IDENTITY(1,1) PRIMARY KEY,
+    ReservationID INT NOT NULL,
+    EquipmentID   INT NOT NULL,
+
+    CONSTRAINT FK_RE_Reservation
+        FOREIGN KEY (ReservationID)
+        REFERENCES Reservation(ReservationID)
+        ON DELETE CASCADE,
+
+    CONSTRAINT FK_RE_Equipment
+        FOREIGN KEY (EquipmentID)
+        REFERENCES Equipment(EquipmentID)
+        ON DELETE CASCADE
+);
 GO
 
--- Backfill existing rows (already inserted before migration)
-UPDATE Reservation SET Status = 'Running' WHERE Status IS NULL OR Status = '';
+-- ============================================================
+-- SAMPLE DATA: Member
+-- ============================================================
+
+INSERT INTO Member
+(FullName, DigitalID, CorporateAffiliation)
+VALUES
+('Ahmed Hassan', 'D001', 'TechCo'),
+('Sara Ali', 'D002', 'StartupHub'),
+('Omar Khaled', 'D003', 'FreelanceInc'),
+('Nora Samir', 'D004', 'DesignStudio'),
+('Karim Mostafa', 'D005', NULL);
 GO
 
--- ────────────────────────────────────────────────────────────
--- 3. ALTER Equipment: add EquipmentType and HubName columns
---    (The table already exists from CreateDB.sql with only
---     EquipmentID and EquipmentName)
--- ────────────────────────────────────────────────────────────
+-- ============================================================
+-- SAMPLE DATA: Workspace
+-- ============================================================
 
-ALTER TABLE Equipment
-    ADD EquipmentType NVARCHAR(50)  NOT NULL DEFAULT 'General',
-        HubName       NVARCHAR(100) NOT NULL DEFAULT 'Unknown';
+INSERT INTO Workspace
+(WorkspaceType, HubName, PricePerHour, Status)
+VALUES
+('Private Office', 'Downtown Hub', 50.00, 'Available'),
+('Open Desk', 'Cairo Hub', 20.00, 'Available'),
+('Meeting Room', 'Giza Hub', 80.00, 'Available'),
+('Private Office', 'Cairo Hub', 55.00, 'Available'),
+('Open Desk', 'Downtown Hub', 18.00, 'Available'),
+('Meeting Room', 'Alexandria Hub', 75.00, 'Available');
 GO
 
--- Backfill sample equipment rows with sensible defaults
-UPDATE Equipment SET EquipmentType = 'AV',       HubName = 'Downtown Hub'   WHERE EquipmentName = 'Projector';
-UPDATE Equipment SET EquipmentType = 'Office',   HubName = 'Cairo Hub'      WHERE EquipmentName = 'Whiteboard';
-UPDATE Equipment SET EquipmentType = 'AV',       HubName = 'Giza Hub'       WHERE EquipmentName = 'Video Conferencing System';
-UPDATE Equipment SET EquipmentType = 'Furniture',HubName = 'Cairo Hub'      WHERE EquipmentName = 'Standing Desk';
-UPDATE Equipment SET EquipmentType = 'Office',   HubName = 'Downtown Hub'   WHERE EquipmentName = 'Printer';
+-- ============================================================
+-- SAMPLE DATA: Equipment
+-- ============================================================
+
+INSERT INTO Equipment
+(EquipmentName, EquipmentType, HubName)
+VALUES
+('Projector', 'AV', 'Downtown Hub'),
+('Whiteboard', 'Office', 'Cairo Hub'),
+('Video Conferencing System', 'AV', 'Giza Hub'),
+('Standing Desk', 'Furniture', 'Cairo Hub'),
+('Printer', 'Office', 'Downtown Hub');
 GO
 
--- ────────────────────────────────────────────────────────────
--- 4. ReservationEquipment already exists from CreateDB.sql
---    (ID, ReservationID, EquipmentID) — no changes needed.
--- ────────────────────────────────────────────────────────────
--- Nothing to do here.
+-- ============================================================
+-- SAMPLE DATA: Reservation
+-- ============================================================
 
--- ────────────────────────────────────────────────────────────
--- 5. Trigger: keep TotalReservedHours in sync automatically
--- ────────────────────────────────────────────────────────────
+INSERT INTO Reservation
+(MemberID, WorkspaceID, ReservationDate, HoursReserved, Status)
+VALUES
+(1, 1, '2025-01-10', 3, 'Running'),
+(2, 2, '2025-01-11', 5, 'Running'),
+(1, 3, '2025-01-12', 2, 'Finished'),
+(3, 4, '2025-01-13', 4, 'Running'),
+(2, 5, '2025-01-14', 6, 'Finished');
+GO
+
+-- ============================================================
+-- SAMPLE DATA: ReservationEquipment
+-- ============================================================
+
+INSERT INTO ReservationEquipment
+(ReservationID, EquipmentID)
+VALUES
+(1, 1),
+(1, 2),
+(3, 3),
+(4, 2),
+(5, 1);
+GO
+
+-- ============================================================
+-- TRIGGER: Update TotalReservedHours Automatically
+-- ============================================================
 
 CREATE OR ALTER TRIGGER trg_UpdateTotalHours
 ON Reservation
@@ -79,13 +177,17 @@ AFTER INSERT, UPDATE, DELETE
 AS
 BEGIN
     SET NOCOUNT ON;
+
     UPDATE m
-    SET    m.TotalReservedHours = ISNULL(
-               (SELECT SUM(r.HoursReserved)
-                FROM   Reservation r
-                WHERE  r.MemberID = m.MemberID), 0)
-    FROM   Member m
-    WHERE  m.MemberID IN (
+    SET m.TotalReservedHours = ISNULL(
+        (
+            SELECT SUM(r.HoursReserved)
+            FROM Reservation r
+            WHERE r.MemberID = m.MemberID
+        ), 0
+    )
+    FROM Member m
+    WHERE m.MemberID IN (
         SELECT MemberID FROM inserted
         UNION
         SELECT MemberID FROM deleted
@@ -93,55 +195,23 @@ BEGIN
 END;
 GO
 
--- ────────────────────────────────────────────────────────────
--- 6. Backfill TotalReservedHours for all existing members
--- ────────────────────────────────────────────────────────────
+-- ============================================================
+-- INITIAL BACKFILL FOR EXISTING DATA
+-- ============================================================
 
 UPDATE m
-SET    m.TotalReservedHours = ISNULL(
-           (SELECT SUM(r.HoursReserved)
-            FROM   Reservation r
-            WHERE  r.MemberID = m.MemberID), 0)
-FROM   Member m;
+SET m.TotalReservedHours = ISNULL(
+    (
+        SELECT SUM(r.HoursReserved)
+        FROM Reservation r
+        WHERE r.MemberID = m.MemberID
+    ), 0
+)
+FROM Member m;
 GO
 
--- Drop existing constraints
-ALTER TABLE Reservation
-    DROP CONSTRAINT FK_Reservation_Member;
-
-ALTER TABLE Reservation
-    DROP CONSTRAINT FK_Reservation_Workspace;
-
--- Re-add with ON DELETE CASCADE
-ALTER TABLE Reservation
-    ADD CONSTRAINT FK_Reservation_Member
-        FOREIGN KEY (MemberID) REFERENCES Member(MemberID)
-        ON DELETE CASCADE;
-
-ALTER TABLE Reservation
-    ADD CONSTRAINT FK_Reservation_Workspace
-        FOREIGN KEY (WorkspaceID) REFERENCES Workspace(WorkspaceID)
-        ON DELETE CASCADE;
--- Drop existing constraints
-ALTER TABLE ReservationEquipment
-    DROP CONSTRAINT FK_RE_Reservation;
-
-ALTER TABLE ReservationEquipment
-    DROP CONSTRAINT FK_RE_Equipment;
-
--- Re-add with ON DELETE CASCADE
-ALTER TABLE ReservationEquipment
-    ADD CONSTRAINT FK_RE_Reservation
-        FOREIGN KEY (ReservationID) REFERENCES Reservation(ReservationID)
-        ON DELETE CASCADE;
-
-ALTER TABLE ReservationEquipment
-    ADD CONSTRAINT FK_RE_Equipment
-        FOREIGN KEY (EquipmentID) REFERENCES Equipment(EquipmentID)
-        ON DELETE CASCADE;
-
-
 PRINT '================================================';
-PRINT 'Migration completed successfully.';
-PRINT 'Schema is now compatible with the new features.';
+PRINT 'SmartWorkspaceDB created successfully.';
+PRINT 'Database is fully ready to use.';
 PRINT '================================================';
+GO
