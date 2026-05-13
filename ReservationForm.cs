@@ -10,8 +10,9 @@ namespace SmartWorkspace
 {
     public partial class ReservationForm : Form
     {
-        private int _selectedReservationID  = 0;
-        private int _selectedWorkspaceID    = 0;
+        private int       _selectedReservationID  = 0;
+        private int       _selectedWorkspaceID    = 0;
+        private DataTable _equipmentTable         = new DataTable();
 
         // ── Constructor ──────────────────────────────────────
         public ReservationForm()
@@ -24,6 +25,7 @@ namespace SmartWorkspace
         {
             LoadMembersCombo();
             LoadWorkspacesCombo();
+            LoadEquipmentList();
             LoadReservations();
         }
 
@@ -103,6 +105,39 @@ namespace SmartWorkspace
             }
         }
 
+        // ── Fill clbEquipment ──────────────────────────────────
+        private void LoadEquipmentList()
+        {
+            try
+            {
+                using (SqlConnection con = new SqlConnection(DB.ConnectionString))
+                {
+                    con.Open();
+
+                    string sql =
+                        "SELECT EquipmentID, " +
+                        "       EquipmentName + ' (' + EquipmentType + ')' AS DisplayName " +
+                        "FROM   Equipment " +
+                        "ORDER  BY HubName, EquipmentName";
+
+                    using (SqlDataAdapter da = new SqlDataAdapter(sql, con))
+                    {
+                        _equipmentTable = new DataTable();
+                        da.Fill(_equipmentTable);
+                    }
+                }
+
+                clbEquipment.Items.Clear();
+                foreach (DataRow row in _equipmentTable.Rows)
+                    clbEquipment.Items.Add(row["DisplayName"].ToString());
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error loading equipment: " + ex.Message,
+                    "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
         // ── btnReserve_Click ──────────────────────────────────
         private void btnReserve_Click(object sender, EventArgs e)
         {
@@ -130,12 +165,14 @@ namespace SmartWorkspace
                 {
                     con.Open();
 
-                    // 1. Insert reservation
+                    // 1. Insert reservation – capture new ID via OUTPUT
                     string insertSql =
                         "INSERT INTO Reservation " +
                         "    (MemberID, WorkspaceID, ReservationDate, HoursReserved, Status) " +
+                        "OUTPUT INSERTED.ReservationID " +
                         "VALUES (@MemberID, @WorkspaceID, @ReservationDate, @HoursReserved, @Status)";
 
+                    int newReservationID;
                     using (SqlCommand cmd = new SqlCommand(insertSql, con))
                     {
                         cmd.Parameters.AddWithValue("@MemberID",        memberID);
@@ -143,10 +180,26 @@ namespace SmartWorkspace
                         cmd.Parameters.AddWithValue("@ReservationDate", dateTimePicker1.Value.Date);
                         cmd.Parameters.AddWithValue("@HoursReserved",   hours);
                         cmd.Parameters.AddWithValue("@Status",          cmbResStatus.SelectedItem.ToString());
-                        cmd.ExecuteNonQuery();
+                        newReservationID = (int)cmd.ExecuteScalar();
                     }
 
-                    // 2. Mark workspace as Reserved
+                    // 2. Link any checked equipment (optional)
+                    foreach (int idx in clbEquipment.CheckedIndices)
+                    {
+                        int equipID = Convert.ToInt32(_equipmentTable.Rows[idx]["EquipmentID"]);
+                        string linkSql =
+                            "INSERT INTO ReservationEquipment (ReservationID, EquipmentID) " +
+                            "VALUES (@RID, @EID)";
+
+                        using (SqlCommand linkCmd = new SqlCommand(linkSql, con))
+                        {
+                            linkCmd.Parameters.AddWithValue("@RID", newReservationID);
+                            linkCmd.Parameters.AddWithValue("@EID", equipID);
+                            linkCmd.ExecuteNonQuery();
+                        }
+                    }
+
+                    // 3. Mark workspace as Reserved
                     string updateSql =
                         "UPDATE Workspace SET Status = 'Reserved' WHERE WorkspaceID = @WorkspaceID";
 
@@ -162,6 +215,8 @@ namespace SmartWorkspace
 
                 txtHours.Clear();
                 cmbResStatus.SelectedIndex = 0;
+                for (int i = 0; i < clbEquipment.Items.Count; i++)
+                    clbEquipment.SetItemChecked(i, false);
                 LoadMembersCombo();
                 LoadWorkspacesCombo();
                 LoadReservations();
@@ -314,7 +369,13 @@ namespace SmartWorkspace
                         "       w.HubName         AS Hub, " +
                         "       r.ReservationDate AS [Date], " +
                         "       r.HoursReserved   AS Hours, " +
-                        "       r.Status " +
+                        "       r.Status, " +
+                        "       ISNULL((" +
+                        "           SELECT STRING_AGG(e.EquipmentName, ', ') " +
+                        "           FROM   ReservationEquipment re " +
+                        "           JOIN   Equipment e ON re.EquipmentID = e.EquipmentID " +
+                        "           WHERE  re.ReservationID = r.ReservationID" +
+                        "       ), 'None') AS Equipment " +
                         "FROM   Reservation r " +
                         "JOIN   Member    m ON r.MemberID    = m.MemberID " +
                         "JOIN   Workspace w ON r.WorkspaceID = w.WorkspaceID " +

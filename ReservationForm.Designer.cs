@@ -24,6 +24,8 @@ namespace SmartWorkspace
             this.lblStatus       = new System.Windows.Forms.Label();
             this.cmbMember       = new System.Windows.Forms.ComboBox();
             this.cmbWorkspace    = new System.Windows.Forms.ComboBox();
+            this.lblEquipment    = new System.Windows.Forms.Label();
+            this.clbEquipment    = new System.Windows.Forms.CheckedListBox();
             this.dateTimePicker1 = new System.Windows.Forms.DateTimePicker();
             this.txtHours        = new System.Windows.Forms.TextBox();
             this.cmbResStatus    = new System.Windows.Forms.ComboBox();
@@ -66,47 +68,59 @@ namespace SmartWorkspace
             this.cmbWorkspace.Location      = new System.Drawing.Point(130, 93);
             this.cmbWorkspace.Size          = new System.Drawing.Size(280, 24);
 
+            // ── lblEquipment ─────────────────────────────────────
+            this.lblEquipment.AutoSize = true;
+            this.lblEquipment.Text     = "Equipment:";
+            this.lblEquipment.Font     = new System.Drawing.Font("Segoe UI", 10F);
+            this.lblEquipment.Location = new System.Drawing.Point(15, 135);
+
+            // ── clbEquipment ─────────────────────────────────────
+            this.clbEquipment.Font         = new System.Drawing.Font("Segoe UI", 10F);
+            this.clbEquipment.Location     = new System.Drawing.Point(130, 132);
+            this.clbEquipment.Size         = new System.Drawing.Size(280, 80);
+            this.clbEquipment.CheckOnClick = true;
+
             // ── lblDate ───────────────────────────────────────
             this.lblDate.AutoSize = true;
             this.lblDate.Text     = "Date:";
             this.lblDate.Font     = new System.Drawing.Font("Segoe UI", 10F);
-            this.lblDate.Location = new System.Drawing.Point(15, 132);
+            this.lblDate.Location = new System.Drawing.Point(15, 222);
 
             // ── dateTimePicker1 ───────────────────────────────
             this.dateTimePicker1.Font     = new System.Drawing.Font("Segoe UI", 10F);
             this.dateTimePicker1.Format   = System.Windows.Forms.DateTimePickerFormat.Short;
-            this.dateTimePicker1.Location = new System.Drawing.Point(130, 129);
+            this.dateTimePicker1.Location = new System.Drawing.Point(130, 219);
             this.dateTimePicker1.Size     = new System.Drawing.Size(180, 24);
 
             // ── lblHours ──────────────────────────────────────
             this.lblHours.AutoSize = true;
             this.lblHours.Text     = "Hours:";
             this.lblHours.Font     = new System.Drawing.Font("Segoe UI", 10F);
-            this.lblHours.Location = new System.Drawing.Point(15, 168);
+            this.lblHours.Location = new System.Drawing.Point(15, 258);
 
             // ── txtHours ──────────────────────────────────────
             this.txtHours.Font     = new System.Drawing.Font("Segoe UI", 10F);
-            this.txtHours.Location = new System.Drawing.Point(130, 165);
+            this.txtHours.Location = new System.Drawing.Point(130, 255);
             this.txtHours.Size     = new System.Drawing.Size(100, 24);
 
             // ── lblStatus ─────────────────────────────────────
             this.lblStatus.AutoSize = true;
             this.lblStatus.Text     = "Status:";
             this.lblStatus.Font     = new System.Drawing.Font("Segoe UI", 10F);
-            this.lblStatus.Location = new System.Drawing.Point(250, 168);
+            this.lblStatus.Location = new System.Drawing.Point(250, 258);
 
             // ── cmbResStatus ──────────────────────────────────
             this.cmbResStatus.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbResStatus.Font          = new System.Drawing.Font("Segoe UI", 10F);
             this.cmbResStatus.Items.AddRange(new object[] { "Running", "Finished" });
             this.cmbResStatus.SelectedIndex = 0;
-            this.cmbResStatus.Location      = new System.Drawing.Point(310, 165);
+            this.cmbResStatus.Location      = new System.Drawing.Point(310, 255);
             this.cmbResStatus.Size          = new System.Drawing.Size(130, 24);
 
             // ── Buttons ───────────────────────────────────────
             this.btnReserve.Text      = "Add Reservation";
             this.btnReserve.Font      = new System.Drawing.Font("Segoe UI", 10F);
-            this.btnReserve.Location  = new System.Drawing.Point(15, 205);
+            this.btnReserve.Location  = new System.Drawing.Point(15, 295);
             this.btnReserve.Size      = new System.Drawing.Size(145, 35);
             this.btnReserve.BackColor = System.Drawing.Color.FromArgb(0, 122, 204);
             this.btnReserve.ForeColor = System.Drawing.Color.White;
@@ -115,7 +129,7 @@ namespace SmartWorkspace
 
             this.btnUpdateStatus.Text      = "Update Status";
             this.btnUpdateStatus.Font      = new System.Drawing.Font("Segoe UI", 10F);
-            this.btnUpdateStatus.Location  = new System.Drawing.Point(170, 205);
+            this.btnUpdateStatus.Location  = new System.Drawing.Point(170, 295);
             this.btnUpdateStatus.Size      = new System.Drawing.Size(140, 35);
             this.btnUpdateStatus.BackColor = System.Drawing.Color.FromArgb(40, 167, 69);
             this.btnUpdateStatus.ForeColor = System.Drawing.Color.White;
@@ -124,7 +138,7 @@ namespace SmartWorkspace
 
             this.btnDelete.Text      = "Delete";
             this.btnDelete.Font      = new System.Drawing.Font("Segoe UI", 10F);
-            this.btnDelete.Location  = new System.Drawing.Point(320, 205);
+            this.btnDelete.Location  = new System.Drawing.Point(320, 295);
             this.btnDelete.Size      = new System.Drawing.Size(110, 35);
             this.btnDelete.BackColor = System.Drawing.Color.FromArgb(220, 53, 69);
             this.btnDelete.ForeColor = System.Drawing.Color.White;
@@ -133,7 +147,7 @@ namespace SmartWorkspace
 
             this.btnLoad.Text      = "Load All";
             this.btnLoad.Font      = new System.Drawing.Font("Segoe UI", 10F);
-            this.btnLoad.Location  = new System.Drawing.Point(440, 205);
+            this.btnLoad.Location  = new System.Drawing.Point(440, 295);
             this.btnLoad.Size      = new System.Drawing.Size(140, 35);
             this.btnLoad.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnLoad.Click    += new System.EventHandler(this.btnLoad_Click);
@@ -146,14 +160,14 @@ namespace SmartWorkspace
             this.dataGridView1.ReadOnly              = true;
             this.dataGridView1.RowHeadersVisible     = false;
             this.dataGridView1.SelectionMode         = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.dataGridView1.Location              = new System.Drawing.Point(15, 252);
+            this.dataGridView1.Location              = new System.Drawing.Point(15, 342);
             this.dataGridView1.Size                  = new System.Drawing.Size(750, 310);
             this.dataGridView1.SelectionChanged     += new System.EventHandler(this.dataGridView1_SelectionChanged);
 
             // ── ReservationForm ───────────────────────────────
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode       = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize          = new System.Drawing.Size(780, 575);
+            this.ClientSize          = new System.Drawing.Size(780, 665);
             this.StartPosition       = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text                = "SmartWorkspace – Reservations";
             this.Load               += new System.EventHandler(this.ReservationForm_Load);
@@ -162,6 +176,8 @@ namespace SmartWorkspace
             this.Controls.Add(this.cmbMember);
             this.Controls.Add(this.lblWorkspace);
             this.Controls.Add(this.cmbWorkspace);
+            this.Controls.Add(this.lblEquipment);
+            this.Controls.Add(this.clbEquipment);
             this.Controls.Add(this.lblDate);
             this.Controls.Add(this.dateTimePicker1);
             this.Controls.Add(this.lblHours);
@@ -187,6 +203,8 @@ namespace SmartWorkspace
         private System.Windows.Forms.Label          lblStatus;
         private System.Windows.Forms.ComboBox       cmbMember;
         private System.Windows.Forms.ComboBox       cmbWorkspace;
+        private System.Windows.Forms.Label          lblEquipment;
+        private System.Windows.Forms.CheckedListBox clbEquipment;
         private System.Windows.Forms.DateTimePicker dateTimePicker1;
         private System.Windows.Forms.TextBox        txtHours;
         private System.Windows.Forms.ComboBox       cmbResStatus;
