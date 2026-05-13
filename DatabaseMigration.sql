@@ -105,6 +105,42 @@ SET    m.TotalReservedHours = ISNULL(
 FROM   Member m;
 GO
 
+-- Drop existing constraints
+ALTER TABLE Reservation
+    DROP CONSTRAINT FK_Reservation_Member;
+
+ALTER TABLE Reservation
+    DROP CONSTRAINT FK_Reservation_Workspace;
+
+-- Re-add with ON DELETE CASCADE
+ALTER TABLE Reservation
+    ADD CONSTRAINT FK_Reservation_Member
+        FOREIGN KEY (MemberID) REFERENCES Member(MemberID)
+        ON DELETE CASCADE;
+
+ALTER TABLE Reservation
+    ADD CONSTRAINT FK_Reservation_Workspace
+        FOREIGN KEY (WorkspaceID) REFERENCES Workspace(WorkspaceID)
+        ON DELETE CASCADE;
+-- Drop existing constraints
+ALTER TABLE ReservationEquipment
+    DROP CONSTRAINT FK_RE_Reservation;
+
+ALTER TABLE ReservationEquipment
+    DROP CONSTRAINT FK_RE_Equipment;
+
+-- Re-add with ON DELETE CASCADE
+ALTER TABLE ReservationEquipment
+    ADD CONSTRAINT FK_RE_Reservation
+        FOREIGN KEY (ReservationID) REFERENCES Reservation(ReservationID)
+        ON DELETE CASCADE;
+
+ALTER TABLE ReservationEquipment
+    ADD CONSTRAINT FK_RE_Equipment
+        FOREIGN KEY (EquipmentID) REFERENCES Equipment(EquipmentID)
+        ON DELETE CASCADE;
+
+
 PRINT '================================================';
 PRINT 'Migration completed successfully.';
 PRINT 'Schema is now compatible with the new features.';
