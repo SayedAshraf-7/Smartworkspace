@@ -10,8 +10,8 @@ namespace SmartWorkspace
 {
     public partial class ReservationForm : Form
     {
-        private int       _selectedReservationID  = 0;
-        private int       _selectedWorkspaceID    = 0;
+        private long      _selectedReservationID  = 0;
+        private long      _selectedWorkspaceID    = 0;
         private DataTable _equipmentTable         = new DataTable();
 
         // ── Constructor ──────────────────────────────────────
@@ -35,14 +35,14 @@ namespace SmartWorkspace
             if (dataGridView1.SelectedRows.Count == 0) return;
 
             DataGridViewRow row = dataGridView1.SelectedRows[0];
-            _selectedReservationID = Convert.ToInt32(row.Cells["ReservationID"].Value);
+            _selectedReservationID = Convert.ToInt64(row.Cells["id"].Value);
 
-            // Try to grab WorkspaceID (hidden column)
-            if (row.Cells["WorkspaceID"] != null && row.Cells["WorkspaceID"].Value != null)
-                _selectedWorkspaceID = Convert.ToInt32(row.Cells["WorkspaceID"].Value);
+            if (row.Cells["workspace_id"] != null && row.Cells["workspace_id"].Value != null)
+                _selectedWorkspaceID = Convert.ToInt64(row.Cells["workspace_id"].Value);
 
-            string status = row.Cells["Status"].Value?.ToString() ?? "Running";
-            cmbResStatus.SelectedItem = status;
+            string status = row.Cells["Status"].Value?.ToString() ?? "running";
+            if (cmbResStatus.Items.Contains(status))
+                cmbResStatus.SelectedItem = status;
         }
 
         // ── Fill cmbMember ────────────────────────────────────
@@ -55,12 +55,12 @@ namespace SmartWorkspace
                     con.Open();
 
                     using (SqlDataAdapter da = new SqlDataAdapter(
-                        "SELECT MemberID, FullName FROM Member ORDER BY FullName", con))
+                        "SELECT id, name FROM Members ORDER BY name", con))
                     {
                         DataTable dt = new DataTable();
                         da.Fill(dt);
-                        cmbMember.DisplayMember = "FullName";
-                        cmbMember.ValueMember   = "MemberID";
+                        cmbMember.DisplayMember = "name";
+                        cmbMember.ValueMember   = "id";
                         cmbMember.DataSource    = dt;
                     }
                 }
@@ -82,18 +82,18 @@ namespace SmartWorkspace
                     con.Open();
 
                     string sql =
-                        "SELECT WorkspaceID, " +
-                        "       WorkspaceType + ' – ' + HubName AS DisplayName " +
-                        "FROM   Workspace " +
-                        "WHERE  Status = 'Available' " +
-                        "ORDER  BY WorkspaceType";
+                        "SELECT w.id, w.type + ' – ' + h.name AS DisplayName " +
+                        "FROM   Workspaces w " +
+                        "JOIN   Hubs h ON w.hub_id = h.id " +
+                        "WHERE  w.status = 'available' " +
+                        "ORDER  BY w.type";
 
                     using (SqlDataAdapter da = new SqlDataAdapter(sql, con))
                     {
                         DataTable dt = new DataTable();
                         da.Fill(dt);
                         cmbWorkspace.DisplayMember = "DisplayName";
-                        cmbWorkspace.ValueMember   = "WorkspaceID";
+                        cmbWorkspace.ValueMember   = "id";
                         cmbWorkspace.DataSource    = dt;
                     }
                 }
@@ -115,10 +115,9 @@ namespace SmartWorkspace
                     con.Open();
 
                     string sql =
-                        "SELECT EquipmentID, " +
-                        "       EquipmentName + ' (' + EquipmentType + ')' AS DisplayName " +
-                        "FROM   Equipment " +
-                        "ORDER  BY HubName, EquipmentName";
+                        "SELECT id, type + ' #' + CAST(id AS NVARCHAR(20)) AS DisplayName " +
+                        "FROM   Equipments " +
+                        "ORDER  BY type, id";
 
                     using (SqlDataAdapter da = new SqlDataAdapter(sql, con))
                     {
@@ -148,18 +147,25 @@ namespace SmartWorkspace
                 return;
             }
 
-            int hours;
-            if (!int.TryParse(txtHours.Text.Trim(), out hours) || hours <= 0)
+            long duration;
+            if (!long.TryParse(txtDuration.Text.Trim(), out duration) || duration <= 0)
             {
-                MessageBox.Show("Hours Reserved must be a positive whole number.",
+                MessageBox.Show("Duration must be a positive whole number.",
+                    "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (dtpEnd.Value <= dtpStart.Value)
+            {
+                MessageBox.Show("End must be after Start.",
                     "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
             try
             {
-                int memberID    = Convert.ToInt32(cmbMember.SelectedValue);
-                int workspaceID = Convert.ToInt32(cmbWorkspace.SelectedValue);
+                long memberID    = Convert.ToInt64(cmbMember.SelectedValue);
+                long workspaceID = Convert.ToInt64(cmbWorkspace.SelectedValue);
 
                 using (SqlConnection con = new SqlConnection(DB.ConnectionString))
                 {
@@ -167,45 +173,48 @@ namespace SmartWorkspace
 
                     // 1. Insert reservation – capture new ID via OUTPUT
                     string insertSql =
-                        "INSERT INTO Reservation " +
-                        "    (MemberID, WorkspaceID, ReservationDate, HoursReserved, Status) " +
-                        "OUTPUT INSERTED.ReservationID " +
-                        "VALUES (@MemberID, @WorkspaceID, @ReservationDate, @HoursReserved, @Status)";
+                        "INSERT INTO Reservations " +
+                        "    (pricing_type, duration, start_date, end_date, member_id, workspace_id, status) " +
+                        "OUTPUT INSERTED.id " +
+                        "VALUES (@pricing_type, @duration, @start_date, @end_date, @member_id, @workspace_id, @status)";
 
-                    int newReservationID;
+                    long newReservationID;
                     using (SqlCommand cmd = new SqlCommand(insertSql, con))
                     {
-                        cmd.Parameters.AddWithValue("@MemberID",        memberID);
-                        cmd.Parameters.AddWithValue("@WorkspaceID",     workspaceID);
-                        cmd.Parameters.AddWithValue("@ReservationDate", dateTimePicker1.Value.Date);
-                        cmd.Parameters.AddWithValue("@HoursReserved",   hours);
-                        cmd.Parameters.AddWithValue("@Status",          cmbResStatus.SelectedItem.ToString());
-                        newReservationID = (int)cmd.ExecuteScalar();
+                        cmd.Parameters.AddWithValue("@pricing_type", cmbPricingType.SelectedItem.ToString());
+                        cmd.Parameters.AddWithValue("@duration",     duration);
+                        cmd.Parameters.AddWithValue("@start_date",   dtpStart.Value);
+                        cmd.Parameters.AddWithValue("@end_date",     dtpEnd.Value);
+                        cmd.Parameters.AddWithValue("@member_id",    memberID);
+                        cmd.Parameters.AddWithValue("@workspace_id", workspaceID);
+                        cmd.Parameters.AddWithValue("@status",       cmbResStatus.SelectedItem.ToString());
+                        newReservationID = Convert.ToInt64(cmd.ExecuteScalar());
                     }
 
                     // 2. Link any checked equipment (optional)
                     foreach (int idx in clbEquipment.CheckedIndices)
                     {
-                        int equipID = Convert.ToInt32(_equipmentTable.Rows[idx]["EquipmentID"]);
+                        long equipID = Convert.ToInt64(_equipmentTable.Rows[idx]["id"]);
                         string linkSql =
-                            "INSERT INTO ReservationEquipment (ReservationID, EquipmentID) " +
-                            "VALUES (@RID, @EID)";
+                            "INSERT INTO Reserved_equipments (equipment_id, reservation_id, duration) " +
+                            "VALUES (@equipment_id, @reservation_id, @duration)";
 
                         using (SqlCommand linkCmd = new SqlCommand(linkSql, con))
                         {
-                            linkCmd.Parameters.AddWithValue("@RID", newReservationID);
-                            linkCmd.Parameters.AddWithValue("@EID", equipID);
+                            linkCmd.Parameters.AddWithValue("@equipment_id",   equipID);
+                            linkCmd.Parameters.AddWithValue("@reservation_id", newReservationID);
+                            linkCmd.Parameters.AddWithValue("@duration",       duration);
                             linkCmd.ExecuteNonQuery();
                         }
                     }
 
-                    // 3. Mark workspace as Reserved
+                    // 3. Mark workspace as reserved
                     string updateSql =
-                        "UPDATE Workspace SET Status = 'Reserved' WHERE WorkspaceID = @WorkspaceID";
+                        "UPDATE Workspaces SET status = 'reserved' WHERE id = @id";
 
                     using (SqlCommand cmd2 = new SqlCommand(updateSql, con))
                     {
-                        cmd2.Parameters.AddWithValue("@WorkspaceID", workspaceID);
+                        cmd2.Parameters.AddWithValue("@id", workspaceID);
                         cmd2.ExecuteNonQuery();
                     }
                 }
@@ -213,7 +222,7 @@ namespace SmartWorkspace
                 MessageBox.Show("Reservation added successfully!",
                     "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-                txtHours.Clear();
+                txtDuration.Clear();
                 cmbResStatus.SelectedIndex = 0;
                 for (int i = 0; i < clbEquipment.Items.Count; i++)
                     clbEquipment.SetItemChecked(i, false);
@@ -247,26 +256,26 @@ namespace SmartWorkspace
                     con.Open();
 
                     string sql =
-                        "UPDATE Reservation SET Status = @Status " +
-                        "WHERE  ReservationID = @ReservationID";
+                        "UPDATE Reservations SET status = @status " +
+                        "WHERE  id = @id";
 
                     using (SqlCommand cmd = new SqlCommand(sql, con))
                     {
-                        cmd.Parameters.AddWithValue("@Status",        newStatus);
-                        cmd.Parameters.AddWithValue("@ReservationID", _selectedReservationID);
+                        cmd.Parameters.AddWithValue("@status", newStatus);
+                        cmd.Parameters.AddWithValue("@id",     _selectedReservationID);
                         cmd.ExecuteNonQuery();
                     }
 
-                    // If marking finished, free the workspace back to Available
-                    if (newStatus == "Finished" && _selectedWorkspaceID > 0)
+                    // If marking finished or cancelled, free the workspace back to available
+                    if ((newStatus == "finished" || newStatus == "cancelled") && _selectedWorkspaceID > 0)
                     {
                         string freeSql =
-                            "UPDATE Workspace SET Status = 'Available' " +
-                            "WHERE  WorkspaceID = @WorkspaceID";
+                            "UPDATE Workspaces SET status = 'available' " +
+                            "WHERE  id = @id";
 
                         using (SqlCommand cmd2 = new SqlCommand(freeSql, con))
                         {
-                            cmd2.Parameters.AddWithValue("@WorkspaceID", _selectedWorkspaceID);
+                            cmd2.Parameters.AddWithValue("@id", _selectedWorkspaceID);
                             cmd2.ExecuteNonQuery();
                         }
                     }
@@ -307,25 +316,25 @@ namespace SmartWorkspace
                 {
                     con.Open();
 
-                    // Restore workspace to Available before deleting reservation
+                    // Restore workspace to available before deleting reservation
                     if (_selectedWorkspaceID > 0)
                     {
                         string freeSql =
-                            "UPDATE Workspace SET Status = 'Available' " +
-                            "WHERE  WorkspaceID = @WorkspaceID";
+                            "UPDATE Workspaces SET status = 'available' " +
+                            "WHERE  id = @id";
 
                         using (SqlCommand cmd = new SqlCommand(freeSql, con))
                         {
-                            cmd.Parameters.AddWithValue("@WorkspaceID", _selectedWorkspaceID);
+                            cmd.Parameters.AddWithValue("@id", _selectedWorkspaceID);
                             cmd.ExecuteNonQuery();
                         }
                     }
 
-                    string sql = "DELETE FROM Reservation WHERE ReservationID = @ReservationID";
+                    string sql = "DELETE FROM Reservations WHERE id = @id";
 
                     using (SqlCommand cmd = new SqlCommand(sql, con))
                     {
-                        cmd.Parameters.AddWithValue("@ReservationID", _selectedReservationID);
+                        cmd.Parameters.AddWithValue("@id", _selectedReservationID);
                         cmd.ExecuteNonQuery();
                     }
                 }
@@ -362,24 +371,27 @@ namespace SmartWorkspace
                     con.Open();
 
                     string sql =
-                        "SELECT r.ReservationID, " +
-                        "       r.WorkspaceID, " +          // hidden – needed for update/delete
-                        "       m.FullName        AS Member, " +
-                        "       w.WorkspaceType   AS [Workspace Type], " +
-                        "       w.HubName         AS Hub, " +
-                        "       r.ReservationDate AS [Date], " +
-                        "       r.HoursReserved   AS Hours, " +
-                        "       r.Status, " +
+                        "SELECT r.id, " +
+                        "       r.workspace_id, " +              // hidden – needed for update/delete
+                        "       m.name           AS Member, " +
+                        "       w.type           AS [Workspace Type], " +
+                        "       h.name           AS Hub, " +
+                        "       r.start_date     AS [Start], " +
+                        "       r.end_date       AS [End], " +
+                        "       r.duration       AS Duration, " +
+                        "       r.pricing_type   AS Pricing, " +
+                        "       r.status         AS Status, " +
                         "       ISNULL((" +
-                        "           SELECT STRING_AGG(e.EquipmentName, ', ') " +
-                        "           FROM   ReservationEquipment re " +
-                        "           JOIN   Equipment e ON re.EquipmentID = e.EquipmentID " +
-                        "           WHERE  re.ReservationID = r.ReservationID" +
+                        "           SELECT STRING_AGG(e.type, ', ') " +
+                        "           FROM   Reserved_equipments re " +
+                        "           JOIN   Equipments e ON re.equipment_id = e.id " +
+                        "           WHERE  re.reservation_id = r.id" +
                         "       ), 'None') AS Equipment " +
-                        "FROM   Reservation r " +
-                        "JOIN   Member    m ON r.MemberID    = m.MemberID " +
-                        "JOIN   Workspace w ON r.WorkspaceID = w.WorkspaceID " +
-                        "ORDER  BY r.ReservationID DESC";
+                        "FROM   Reservations r " +
+                        "JOIN   Members m    ON r.member_id    = m.id " +
+                        "JOIN   Workspaces w ON r.workspace_id = w.id " +
+                        "JOIN   Hubs h       ON w.hub_id       = h.id " +
+                        "ORDER  BY r.id DESC";
 
                     using (SqlDataAdapter da = new SqlDataAdapter(sql, con))
                     {
@@ -387,9 +399,8 @@ namespace SmartWorkspace
                         da.Fill(dt);
                         dataGridView1.DataSource = dt;
 
-                        // Hide the WorkspaceID column from the user
-                        if (dataGridView1.Columns["WorkspaceID"] != null)
-                            dataGridView1.Columns["WorkspaceID"].Visible = false;
+                        if (dataGridView1.Columns["workspace_id"] != null)
+                            dataGridView1.Columns["workspace_id"].Visible = false;
                     }
                 }
             }

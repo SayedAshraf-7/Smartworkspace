@@ -10,7 +10,7 @@ namespace SmartWorkspace
 {
     public partial class WorkspaceForm : Form
     {
-        private int _selectedWorkspaceID = 0;
+        private long _selectedWorkspaceID = 0;
 
         // ── Constructor ──────────────────────────────────────
         public WorkspaceForm()
@@ -21,6 +21,7 @@ namespace SmartWorkspace
         // ── Form Load ────────────────────────────────────────
         private void WorkspaceForm_Load(object sender, EventArgs e)
         {
+            LoadHubs();
             LoadFilterOptions();
             LoadWorkspaces();
         }
@@ -31,13 +32,46 @@ namespace SmartWorkspace
             if (dataGridView1.SelectedRows.Count == 0) return;
 
             DataGridViewRow row = dataGridView1.SelectedRows[0];
-            _selectedWorkspaceID = Convert.ToInt32(row.Cells["WorkspaceID"].Value);
-            txtType.Text  = row.Cells["WorkspaceType"].Value?.ToString() ?? "";
-            txtHub.Text   = row.Cells["HubName"].Value?.ToString() ?? "";
-            txtPrice.Text = row.Cells["PricePerHour"].Value?.ToString() ?? "";
+            _selectedWorkspaceID = Convert.ToInt64(row.Cells["id"].Value);
 
-            string status = row.Cells["Status"].Value?.ToString() ?? "Available";
-            cmbStatus.SelectedItem = status;
+            string type = row.Cells["type"].Value?.ToString() ?? "";
+            if (cmbType.Items.Contains(type)) cmbType.SelectedItem = type;
+
+            long hubId = Convert.ToInt64(row.Cells["hub_id"].Value);
+            cmbHub.SelectedValue = hubId;
+
+            txtHourlyRate.Text = row.Cells["hourly_rate"].Value?.ToString() ?? "";
+            txtDailyRate.Text  = row.Cells["daily_rate"].Value?.ToString() ?? "";
+
+            string status = row.Cells["status"].Value?.ToString() ?? "available";
+            if (cmbStatus.Items.Contains(status)) cmbStatus.SelectedItem = status;
+        }
+
+        // ── Populate hub combo (form-input combo) ─────────────
+        private void LoadHubs()
+        {
+            try
+            {
+                using (SqlConnection con = new SqlConnection(DB.ConnectionString))
+                {
+                    con.Open();
+
+                    using (SqlDataAdapter da = new SqlDataAdapter(
+                        "SELECT id, name FROM Hubs ORDER BY name", con))
+                    {
+                        DataTable dt = new DataTable();
+                        da.Fill(dt);
+                        cmbHub.DisplayMember = "name";
+                        cmbHub.ValueMember   = "id";
+                        cmbHub.DataSource    = dt;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error loading hubs: " + ex.Message,
+                    "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         // ── Populate filter combos ────────────────────────────
@@ -49,31 +83,26 @@ namespace SmartWorkspace
                 {
                     con.Open();
 
-                    // Hub filter
+                    // Hub filter — store name in the items, look up id at filter time
                     using (SqlDataAdapter da = new SqlDataAdapter(
-                        "SELECT DISTINCT HubName FROM Workspace ORDER BY HubName", con))
+                        "SELECT name FROM Hubs ORDER BY name", con))
                     {
                         DataTable dt = new DataTable();
                         da.Fill(dt);
                         cmbFilterHub.Items.Clear();
                         cmbFilterHub.Items.Add("All");
                         foreach (DataRow r in dt.Rows)
-                            cmbFilterHub.Items.Add(r["HubName"].ToString());
+                            cmbFilterHub.Items.Add(r["name"].ToString());
                         cmbFilterHub.SelectedIndex = 0;
                     }
 
-                    // Type filter
-                    using (SqlDataAdapter da = new SqlDataAdapter(
-                        "SELECT DISTINCT WorkspaceType FROM Workspace ORDER BY WorkspaceType", con))
-                    {
-                        DataTable dt = new DataTable();
-                        da.Fill(dt);
-                        cmbFilterType.Items.Clear();
-                        cmbFilterType.Items.Add("All");
-                        foreach (DataRow r in dt.Rows)
-                            cmbFilterType.Items.Add(r["WorkspaceType"].ToString());
-                        cmbFilterType.SelectedIndex = 0;
-                    }
+                    // Type filter (use the enum values)
+                    cmbFilterType.Items.Clear();
+                    cmbFilterType.Items.Add("All");
+                    cmbFilterType.Items.Add("private_office");
+                    cmbFilterType.Items.Add("open_desk");
+                    cmbFilterType.Items.Add("meeting_pod");
+                    cmbFilterType.SelectedIndex = 0;
                 }
             }
             catch (Exception ex)
@@ -86,39 +115,43 @@ namespace SmartWorkspace
         // ── btnAdd_Click ─────────────────────────────────────
         private void btnAdd_Click(object sender, EventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(txtType.Text) ||
-                string.IsNullOrWhiteSpace(txtHub.Text)  ||
-                string.IsNullOrWhiteSpace(txtPrice.Text))
+            if (cmbType.SelectedItem == null || cmbHub.SelectedValue == null ||
+                string.IsNullOrWhiteSpace(txtHourlyRate.Text) ||
+                string.IsNullOrWhiteSpace(txtDailyRate.Text))
             {
-                MessageBox.Show("Type, Hub Name, and Price are required.",
+                MessageBox.Show("Type, Hub, Hourly Rate and Daily Rate are required.",
                     "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            decimal price;
-            if (!decimal.TryParse(txtPrice.Text.Trim(), out price) || price < 0)
+            long hourlyRate, dailyRate;
+            if (!long.TryParse(txtHourlyRate.Text.Trim(), out hourlyRate) || hourlyRate < 0 ||
+                !long.TryParse(txtDailyRate.Text.Trim(),  out dailyRate)  || dailyRate  < 0)
             {
-                MessageBox.Show("Price must be a valid positive number.",
+                MessageBox.Show("Hourly and Daily Rate must be valid non-negative numbers.",
                     "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
             try
             {
+                long hubId = Convert.ToInt64(cmbHub.SelectedValue);
+
                 using (SqlConnection con = new SqlConnection(DB.ConnectionString))
                 {
                     con.Open();
 
                     string sql =
-                        "INSERT INTO Workspace (WorkspaceType, HubName, PricePerHour, Status) " +
-                        "VALUES (@WorkspaceType, @HubName, @PricePerHour, @Status)";
+                        "INSERT INTO Workspaces (type, hub_id, hourly_rate, daily_rate, status) " +
+                        "VALUES (@type, @hub_id, @hourly_rate, @daily_rate, @status)";
 
                     using (SqlCommand cmd = new SqlCommand(sql, con))
                     {
-                        cmd.Parameters.AddWithValue("@WorkspaceType", txtType.Text.Trim());
-                        cmd.Parameters.AddWithValue("@HubName",       txtHub.Text.Trim());
-                        cmd.Parameters.AddWithValue("@PricePerHour",  price);
-                        cmd.Parameters.AddWithValue("@Status",        cmbStatus.SelectedItem.ToString());
+                        cmd.Parameters.AddWithValue("@type",        cmbType.SelectedItem.ToString());
+                        cmd.Parameters.AddWithValue("@hub_id",      hubId);
+                        cmd.Parameters.AddWithValue("@hourly_rate", hourlyRate);
+                        cmd.Parameters.AddWithValue("@daily_rate",  dailyRate);
+                        cmd.Parameters.AddWithValue("@status",      cmbStatus.SelectedItem.ToString());
                         cmd.ExecuteNonQuery();
                     }
                 }
@@ -147,35 +180,40 @@ namespace SmartWorkspace
                 return;
             }
 
-            decimal price;
-            if (!decimal.TryParse(txtPrice.Text.Trim(), out price) || price < 0)
+            long hourlyRate, dailyRate;
+            if (!long.TryParse(txtHourlyRate.Text.Trim(), out hourlyRate) || hourlyRate < 0 ||
+                !long.TryParse(txtDailyRate.Text.Trim(),  out dailyRate)  || dailyRate  < 0)
             {
-                MessageBox.Show("Price must be a valid positive number.",
+                MessageBox.Show("Hourly and Daily Rate must be valid non-negative numbers.",
                     "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
             try
             {
+                long hubId = Convert.ToInt64(cmbHub.SelectedValue);
+
                 using (SqlConnection con = new SqlConnection(DB.ConnectionString))
                 {
                     con.Open();
 
                     string sql =
-                        "UPDATE Workspace " +
-                        "SET    WorkspaceType = @WorkspaceType, " +
-                        "       HubName       = @HubName, " +
-                        "       PricePerHour  = @PricePerHour, " +
-                        "       Status        = @Status " +
-                        "WHERE  WorkspaceID = @WorkspaceID";
+                        "UPDATE Workspaces " +
+                        "SET    type        = @type, " +
+                        "       hub_id      = @hub_id, " +
+                        "       hourly_rate = @hourly_rate, " +
+                        "       daily_rate  = @daily_rate, " +
+                        "       status      = @status " +
+                        "WHERE  id = @id";
 
                     using (SqlCommand cmd = new SqlCommand(sql, con))
                     {
-                        cmd.Parameters.AddWithValue("@WorkspaceType", txtType.Text.Trim());
-                        cmd.Parameters.AddWithValue("@HubName",       txtHub.Text.Trim());
-                        cmd.Parameters.AddWithValue("@PricePerHour",  price);
-                        cmd.Parameters.AddWithValue("@Status",        cmbStatus.SelectedItem.ToString());
-                        cmd.Parameters.AddWithValue("@WorkspaceID",   _selectedWorkspaceID);
+                        cmd.Parameters.AddWithValue("@type",        cmbType.SelectedItem.ToString());
+                        cmd.Parameters.AddWithValue("@hub_id",      hubId);
+                        cmd.Parameters.AddWithValue("@hourly_rate", hourlyRate);
+                        cmd.Parameters.AddWithValue("@daily_rate",  dailyRate);
+                        cmd.Parameters.AddWithValue("@status",      cmbStatus.SelectedItem.ToString());
+                        cmd.Parameters.AddWithValue("@id",          _selectedWorkspaceID);
                         cmd.ExecuteNonQuery();
                     }
                 }
@@ -216,11 +254,11 @@ namespace SmartWorkspace
                 {
                     con.Open();
 
-                    string sql = "DELETE FROM Workspace WHERE WorkspaceID = @WorkspaceID";
+                    string sql = "DELETE FROM Workspaces WHERE id = @id";
 
                     using (SqlCommand cmd = new SqlCommand(sql, con))
                     {
-                        cmd.Parameters.AddWithValue("@WorkspaceID", _selectedWorkspaceID);
+                        cmd.Parameters.AddWithValue("@id", _selectedWorkspaceID);
                         cmd.ExecuteNonQuery();
                     }
                 }
@@ -260,35 +298,38 @@ namespace SmartWorkspace
                     string where = "WHERE 1=1";
 
                     if (cmbFilterStatus.SelectedIndex > 0)
-                        where += " AND Status = @Status";
+                        where += " AND w.status = @status";
 
                     if (cmbFilterHub.SelectedIndex > 0)
-                        where += " AND HubName = @HubName";
+                        where += " AND h.name = @hub_name";
 
                     if (cmbFilterType.SelectedIndex > 0)
-                        where += " AND WorkspaceType = @WorkspaceType";
+                        where += " AND w.type = @type";
 
                     string sql =
-                        "SELECT WorkspaceID, WorkspaceType, HubName, PricePerHour, Status " +
-                        "FROM   Workspace " + where +
-                        " ORDER BY WorkspaceType";
+                        "SELECT w.id, w.type, w.hub_id, h.name AS hub, w.hourly_rate, w.daily_rate, w.status " +
+                        "FROM   Workspaces w " +
+                        "JOIN   Hubs h ON w.hub_id = h.id " + where +
+                        " ORDER BY w.type";
 
                     using (SqlCommand cmd = new SqlCommand(sql, con))
                     {
                         if (cmbFilterStatus.SelectedIndex > 0)
-                            cmd.Parameters.AddWithValue("@Status", cmbFilterStatus.SelectedItem.ToString());
+                            cmd.Parameters.AddWithValue("@status", cmbFilterStatus.SelectedItem.ToString());
 
                         if (cmbFilterHub.SelectedIndex > 0)
-                            cmd.Parameters.AddWithValue("@HubName", cmbFilterHub.SelectedItem.ToString());
+                            cmd.Parameters.AddWithValue("@hub_name", cmbFilterHub.SelectedItem.ToString());
 
                         if (cmbFilterType.SelectedIndex > 0)
-                            cmd.Parameters.AddWithValue("@WorkspaceType", cmbFilterType.SelectedItem.ToString());
+                            cmd.Parameters.AddWithValue("@type", cmbFilterType.SelectedItem.ToString());
 
                         using (SqlDataAdapter da = new SqlDataAdapter(cmd))
                         {
                             DataTable dt = new DataTable();
                             da.Fill(dt);
                             dataGridView1.DataSource = dt;
+                            if (dataGridView1.Columns["hub_id"] != null)
+                                dataGridView1.Columns["hub_id"].Visible = false;
                         }
                     }
                 }
@@ -319,15 +360,18 @@ namespace SmartWorkspace
                     con.Open();
 
                     string sql =
-                        "SELECT WorkspaceID, WorkspaceType, HubName, PricePerHour, Status " +
-                        "FROM   Workspace " +
-                        "ORDER  BY WorkspaceType";
+                        "SELECT w.id, w.type, w.hub_id, h.name AS hub, w.hourly_rate, w.daily_rate, w.status " +
+                        "FROM   Workspaces w " +
+                        "JOIN   Hubs h ON w.hub_id = h.id " +
+                        "ORDER  BY w.type";
 
                     using (SqlDataAdapter da = new SqlDataAdapter(sql, con))
                     {
                         DataTable dt = new DataTable();
                         da.Fill(dt);
                         dataGridView1.DataSource = dt;
+                        if (dataGridView1.Columns["hub_id"] != null)
+                            dataGridView1.Columns["hub_id"].Visible = false;
                     }
                 }
             }
@@ -341,12 +385,12 @@ namespace SmartWorkspace
         // ── ClearFields ───────────────────────────────────────
         private void ClearFields()
         {
-            txtType.Clear();
-            txtHub.Clear();
-            txtPrice.Clear();
+            if (cmbType.Items.Count > 0) cmbType.SelectedIndex = 0;
+            if (cmbHub.Items.Count > 0)  cmbHub.SelectedIndex  = 0;
+            txtHourlyRate.Clear();
+            txtDailyRate.Clear();
             cmbStatus.SelectedIndex = 0;
             _selectedWorkspaceID = 0;
-            txtType.Focus();
         }
     }
 }

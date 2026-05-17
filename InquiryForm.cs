@@ -52,11 +52,11 @@ namespace SmartWorkspace
         private void btnPopular_Click(object sender, EventArgs e)
         {
             string sql =
-                "SELECT   w.WorkspaceType        AS [Workspace Type], " +
-                "         COUNT(r.ReservationID) AS [Total Reservations] " +
-                "FROM     Workspace w " +
-                "LEFT JOIN Reservation r ON w.WorkspaceID = r.WorkspaceID " +
-                "GROUP BY w.WorkspaceType " +
+                "SELECT   w.type           AS [Workspace Type], " +
+                "         COUNT(r.id)      AS [Total Reservations] " +
+                "FROM     Workspaces w " +
+                "LEFT JOIN Reservations r ON w.id = r.workspace_id " +
+                "GROUP BY w.type " +
                 "ORDER BY [Total Reservations] DESC";
 
             RunQuery(sql, "Most Popular Workspace Types");
@@ -66,13 +66,13 @@ namespace SmartWorkspace
         private void btnNoReservation_Click(object sender, EventArgs e)
         {
             string sql =
-                "SELECT m.MemberID, " +
-                "       m.FullName             AS [Full Name], " +
-                "       m.DigitalID            AS [Digital ID], " +
-                "       m.CorporateAffiliation AS [Corp. Affiliation] " +
-                "FROM   Member m " +
-                "WHERE  m.MemberID NOT IN " +
-                "       (SELECT DISTINCT MemberID FROM Reservation)";
+                "SELECT m.id                    AS [Member ID], " +
+                "       m.name                  AS [Full Name], " +
+                "       m.digital_identification AS [Digital ID], " +
+                "       m.corporate_affiliation AS [Corp. Affiliation] " +
+                "FROM   Members m " +
+                "WHERE  m.id NOT IN " +
+                "       (SELECT DISTINCT member_id FROM Reservations)";
 
             RunQuery(sql, "Members With No Reservations");
         }
@@ -81,14 +81,15 @@ namespace SmartWorkspace
         private void btnNoReservationHubs_Click(object sender, EventArgs e)
         {
             string sql =
-                "SELECT DISTINCT w.HubName AS [Hub Name] " +
-                "FROM   Workspace w " +
-                "WHERE  w.WorkspaceID NOT IN ( " +
-                "           SELECT r.WorkspaceID " +
-                "           FROM   Reservation r " +
-                "           WHERE  r.ReservationDate >= DATEADD(MONTH, -1, GETDATE()) " +
+                "SELECT DISTINCT h.name AS [Hub Name] " +
+                "FROM   Hubs h " +
+                "JOIN   Workspaces w ON w.hub_id = h.id " +
+                "WHERE  w.id NOT IN ( " +
+                "           SELECT r.workspace_id " +
+                "           FROM   Reservations r " +
+                "           WHERE  r.start_date >= DATEADD(MONTH, -1, GETDATE()) " +
                 "       ) " +
-                "ORDER BY w.HubName";
+                "ORDER BY h.name";
 
             RunQuery(sql, "Hubs With No Reservations in the Last Month");
         }
@@ -97,31 +98,32 @@ namespace SmartWorkspace
         private void btnMostVariedEquipment_Click(object sender, EventArgs e)
         {
             string sql =
-                "SELECT   m.FullName                     AS [Member], " +
-                "         COUNT(DISTINCT re.EquipmentID) AS [Equipment Variety] " +
-                "FROM     Member m " +
-                "JOIN     Reservation r           ON r.MemberID      = m.MemberID " +
-                "JOIN     ReservationEquipment re  ON re.ReservationID = r.ReservationID " +
-                "GROUP BY m.MemberID, m.FullName " +
+                "SELECT   m.name                         AS [Member], " +
+                "         COUNT(DISTINCT re.equipment_id) AS [Equipment Variety] " +
+                "FROM     Members m " +
+                "JOIN     Reservations r           ON r.member_id      = m.id " +
+                "JOIN     Reserved_equipments re   ON re.reservation_id = r.id " +
+                "GROUP BY m.id, m.name " +
                 "ORDER BY [Equipment Variety] DESC";
 
             RunQuery(sql, "Members With Most Equipment Variety in Reservations");
         }
 
-        // ── Query 5: Equipment used per hub/urban last month ──
+        // ── Query 5: Equipment used per hub last month ────────
         private void btnEquipmentByHub_Click(object sender, EventArgs e)
         {
             string sql =
-                "SELECT   e.HubName               AS [Hub / Urban], " +
-                "         e.EquipmentName          AS [Equipment], " +
-                "         e.EquipmentType          AS [Type], " +
-                "         COUNT(re.ReservationID)  AS [Times Used Last Month] " +
-                "FROM     Equipment e " +
-                "JOIN     ReservationEquipment re ON re.EquipmentID    = e.EquipmentID " +
-                "JOIN     Reservation r           ON r.ReservationID   = re.ReservationID " +
-                "WHERE    r.ReservationDate >= DATEADD(MONTH, -1, GETDATE()) " +
-                "GROUP BY e.HubName, e.EquipmentID, e.EquipmentName, e.EquipmentType " +
-                "ORDER BY e.HubName, [Times Used Last Month] DESC";
+                "SELECT   h.name                  AS [Hub], " +
+                "         e.type                  AS [Equipment Type], " +
+                "         COUNT(re.reservation_id) AS [Times Used Last Month] " +
+                "FROM     Equipments e " +
+                "JOIN     Reserved_equipments re ON re.equipment_id    = e.id " +
+                "JOIN     Reservations r         ON r.id               = re.reservation_id " +
+                "JOIN     Workspaces w           ON r.workspace_id     = w.id " +
+                "JOIN     Hubs h                 ON w.hub_id           = h.id " +
+                "WHERE    r.start_date >= DATEADD(MONTH, -1, GETDATE()) " +
+                "GROUP BY h.name, e.type " +
+                "ORDER BY h.name, [Times Used Last Month] DESC";
 
             RunQuery(sql, "Equipment Used per Hub in the Last Month");
         }

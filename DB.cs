@@ -12,7 +12,7 @@ namespace SmartWorkspace
         //   DESKTOP-XXXXX\SQLEXPRESS
         //   localhost   (full SQL Server, default instance)
         public static readonly string ConnectionString =
-           @"Server=localhost;Database=SmartWorkspaceDB;Integrated Security=True;
+           @"Server=localhost;Database=smart_workspace_hub;Integrated Security=True;
 TrustServerCertificate=True;";
     
     

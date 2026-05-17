@@ -19,11 +19,13 @@ namespace SmartWorkspace
             this.lblTitle         = new System.Windows.Forms.Label();
             this.lblType          = new System.Windows.Forms.Label();
             this.lblHub           = new System.Windows.Forms.Label();
-            this.lblPrice         = new System.Windows.Forms.Label();
+            this.lblHourlyRate    = new System.Windows.Forms.Label();
+            this.lblDailyRate     = new System.Windows.Forms.Label();
             this.lblStatusInput   = new System.Windows.Forms.Label();
-            this.txtType          = new System.Windows.Forms.TextBox();
-            this.txtHub           = new System.Windows.Forms.TextBox();
-            this.txtPrice         = new System.Windows.Forms.TextBox();
+            this.cmbType          = new System.Windows.Forms.ComboBox();
+            this.cmbHub           = new System.Windows.Forms.ComboBox();
+            this.txtHourlyRate    = new System.Windows.Forms.TextBox();
+            this.txtDailyRate     = new System.Windows.Forms.TextBox();
             this.cmbStatus        = new System.Windows.Forms.ComboBox();
             this.btnAdd           = new System.Windows.Forms.Button();
             this.btnUpdate        = new System.Windows.Forms.Button();
@@ -57,45 +59,60 @@ namespace SmartWorkspace
             this.lblType.Font     = new System.Drawing.Font("Segoe UI", 10F);
             this.lblType.Location = new System.Drawing.Point(15, 60);
 
-            // ── txtType ───────────────────────────────────────
-            this.txtType.Font     = new System.Drawing.Font("Segoe UI", 10F);
-            this.txtType.Location = new System.Drawing.Point(160, 57);
-            this.txtType.Size     = new System.Drawing.Size(220, 24);
+            // ── cmbType ───────────────────────────────────────
+            this.cmbType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbType.Font          = new System.Drawing.Font("Segoe UI", 10F);
+            this.cmbType.Items.AddRange(new object[] { "private_office", "open_desk", "meeting_pod" });
+            this.cmbType.SelectedIndex = 0;
+            this.cmbType.Location      = new System.Drawing.Point(160, 57);
+            this.cmbType.Size          = new System.Drawing.Size(220, 24);
 
             // ── lblHub ────────────────────────────────────────
             this.lblHub.AutoSize = true;
-            this.lblHub.Text     = "Hub Name:";
+            this.lblHub.Text     = "Hub:";
             this.lblHub.Font     = new System.Drawing.Font("Segoe UI", 10F);
             this.lblHub.Location = new System.Drawing.Point(15, 96);
 
-            // ── txtHub ────────────────────────────────────────
-            this.txtHub.Font     = new System.Drawing.Font("Segoe UI", 10F);
-            this.txtHub.Location = new System.Drawing.Point(160, 93);
-            this.txtHub.Size     = new System.Drawing.Size(220, 24);
+            // ── cmbHub ────────────────────────────────────────
+            this.cmbHub.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbHub.Font          = new System.Drawing.Font("Segoe UI", 10F);
+            this.cmbHub.Location      = new System.Drawing.Point(160, 93);
+            this.cmbHub.Size          = new System.Drawing.Size(220, 24);
 
-            // ── lblPrice ──────────────────────────────────────
-            this.lblPrice.AutoSize = true;
-            this.lblPrice.Text     = "Price / Hour:";
-            this.lblPrice.Font     = new System.Drawing.Font("Segoe UI", 10F);
-            this.lblPrice.Location = new System.Drawing.Point(15, 132);
+            // ── lblHourlyRate ─────────────────────────────────
+            this.lblHourlyRate.AutoSize = true;
+            this.lblHourlyRate.Text     = "Hourly Rate:";
+            this.lblHourlyRate.Font     = new System.Drawing.Font("Segoe UI", 10F);
+            this.lblHourlyRate.Location = new System.Drawing.Point(15, 132);
 
-            // ── txtPrice ──────────────────────────────────────
-            this.txtPrice.Font     = new System.Drawing.Font("Segoe UI", 10F);
-            this.txtPrice.Location = new System.Drawing.Point(160, 129);
-            this.txtPrice.Size     = new System.Drawing.Size(120, 24);
+            // ── txtHourlyRate ─────────────────────────────────
+            this.txtHourlyRate.Font     = new System.Drawing.Font("Segoe UI", 10F);
+            this.txtHourlyRate.Location = new System.Drawing.Point(160, 129);
+            this.txtHourlyRate.Size     = new System.Drawing.Size(120, 24);
+
+            // ── lblDailyRate ──────────────────────────────────
+            this.lblDailyRate.AutoSize = true;
+            this.lblDailyRate.Text     = "Daily Rate:";
+            this.lblDailyRate.Font     = new System.Drawing.Font("Segoe UI", 10F);
+            this.lblDailyRate.Location = new System.Drawing.Point(295, 132);
+
+            // ── txtDailyRate ──────────────────────────────────
+            this.txtDailyRate.Font     = new System.Drawing.Font("Segoe UI", 10F);
+            this.txtDailyRate.Location = new System.Drawing.Point(385, 129);
+            this.txtDailyRate.Size     = new System.Drawing.Size(120, 24);
 
             // ── lblStatusInput ────────────────────────────────
             this.lblStatusInput.AutoSize = true;
             this.lblStatusInput.Text     = "Status:";
             this.lblStatusInput.Font     = new System.Drawing.Font("Segoe UI", 10F);
-            this.lblStatusInput.Location = new System.Drawing.Point(300, 132);
+            this.lblStatusInput.Location = new System.Drawing.Point(520, 132);
 
             // ── cmbStatus ─────────────────────────────────────
             this.cmbStatus.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbStatus.Font          = new System.Drawing.Font("Segoe UI", 10F);
-            this.cmbStatus.Items.AddRange(new object[] { "Available", "Reserved" });
+            this.cmbStatus.Items.AddRange(new object[] { "available", "reserved", "maintenance" });
             this.cmbStatus.SelectedIndex = 0;
-            this.cmbStatus.Location      = new System.Drawing.Point(360, 129);
+            this.cmbStatus.Location      = new System.Drawing.Point(580, 129);
             this.cmbStatus.Size          = new System.Drawing.Size(140, 24);
 
             // ── Buttons Row ───────────────────────────────────
@@ -141,7 +158,7 @@ namespace SmartWorkspace
 
             this.cmbFilterStatus.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbFilterStatus.Font          = new System.Drawing.Font("Segoe UI", 9F);
-            this.cmbFilterStatus.Items.AddRange(new object[] { "All", "Available", "Reserved" });
+            this.cmbFilterStatus.Items.AddRange(new object[] { "All", "available", "reserved", "maintenance" });
             this.cmbFilterStatus.SelectedIndex = 0;
             this.cmbFilterStatus.Location      = new System.Drawing.Point(60, 217);
             this.cmbFilterStatus.Size          = new System.Drawing.Size(110, 22);
@@ -203,11 +220,13 @@ namespace SmartWorkspace
             this.Load               += new System.EventHandler(this.WorkspaceForm_Load);
             this.Controls.Add(this.lblTitle);
             this.Controls.Add(this.lblType);
-            this.Controls.Add(this.txtType);
+            this.Controls.Add(this.cmbType);
             this.Controls.Add(this.lblHub);
-            this.Controls.Add(this.txtHub);
-            this.Controls.Add(this.lblPrice);
-            this.Controls.Add(this.txtPrice);
+            this.Controls.Add(this.cmbHub);
+            this.Controls.Add(this.lblHourlyRate);
+            this.Controls.Add(this.txtHourlyRate);
+            this.Controls.Add(this.lblDailyRate);
+            this.Controls.Add(this.txtDailyRate);
             this.Controls.Add(this.lblStatusInput);
             this.Controls.Add(this.cmbStatus);
             this.Controls.Add(this.btnAdd);
@@ -232,11 +251,13 @@ namespace SmartWorkspace
         private System.Windows.Forms.Label        lblTitle;
         private System.Windows.Forms.Label        lblType;
         private System.Windows.Forms.Label        lblHub;
-        private System.Windows.Forms.Label        lblPrice;
+        private System.Windows.Forms.Label        lblHourlyRate;
+        private System.Windows.Forms.Label        lblDailyRate;
         private System.Windows.Forms.Label        lblStatusInput;
-        private System.Windows.Forms.TextBox      txtType;
-        private System.Windows.Forms.TextBox      txtHub;
-        private System.Windows.Forms.TextBox      txtPrice;
+        private System.Windows.Forms.ComboBox     cmbType;
+        private System.Windows.Forms.ComboBox     cmbHub;
+        private System.Windows.Forms.TextBox      txtHourlyRate;
+        private System.Windows.Forms.TextBox      txtDailyRate;
         private System.Windows.Forms.ComboBox     cmbStatus;
         private System.Windows.Forms.Button       btnAdd;
         private System.Windows.Forms.Button       btnUpdate;

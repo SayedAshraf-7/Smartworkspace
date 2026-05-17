@@ -10,7 +10,7 @@ namespace SmartWorkspace
 {
     public partial class EquipmentForm : Form
     {
-        private int _selectedEquipmentID = 0;
+        private long _selectedEquipmentID = 0;
 
         // ── Constructor ──────────────────────────────────────
         public EquipmentForm()
@@ -25,20 +25,18 @@ namespace SmartWorkspace
             if (dataGridView1.SelectedRows.Count == 0) return;
 
             DataGridViewRow row = dataGridView1.SelectedRows[0];
-            _selectedEquipmentID = Convert.ToInt32(row.Cells["EquipmentID"].Value);
-            txtName.Text = row.Cells["EquipmentName"].Value?.ToString() ?? "";
-            txtType.Text = row.Cells["EquipmentType"].Value?.ToString() ?? "";
-            txtHub.Text  = row.Cells["HubName"].Value?.ToString() ?? "";
+            _selectedEquipmentID = Convert.ToInt64(row.Cells["id"].Value);
+
+            string type = row.Cells["type"].Value?.ToString() ?? "";
+            if (cmbType.Items.Contains(type)) cmbType.SelectedItem = type;
         }
 
         // ── btnAdd_Click ─────────────────────────────────────
         private void btnAdd_Click(object sender, EventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(txtName.Text) ||
-                string.IsNullOrWhiteSpace(txtType.Text) ||
-                string.IsNullOrWhiteSpace(txtHub.Text))
+            if (cmbType.SelectedItem == null)
             {
-                MessageBox.Show("Equipment Name, Type, and Hub are all required.",
+                MessageBox.Show("Equipment Type is required.",
                     "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -49,15 +47,11 @@ namespace SmartWorkspace
                 {
                     con.Open();
 
-                    string sql =
-                        "INSERT INTO Equipment (EquipmentName, EquipmentType, HubName) " +
-                        "VALUES (@EquipmentName, @EquipmentType, @HubName)";
+                    string sql = "INSERT INTO Equipments (type) VALUES (@type)";
 
                     using (SqlCommand cmd = new SqlCommand(sql, con))
                     {
-                        cmd.Parameters.AddWithValue("@EquipmentName", txtName.Text.Trim());
-                        cmd.Parameters.AddWithValue("@EquipmentType", txtType.Text.Trim());
-                        cmd.Parameters.AddWithValue("@HubName",       txtHub.Text.Trim());
+                        cmd.Parameters.AddWithValue("@type", cmbType.SelectedItem.ToString());
                         cmd.ExecuteNonQuery();
                     }
                 }
@@ -85,11 +79,9 @@ namespace SmartWorkspace
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(txtName.Text) ||
-                string.IsNullOrWhiteSpace(txtType.Text) ||
-                string.IsNullOrWhiteSpace(txtHub.Text))
+            if (cmbType.SelectedItem == null)
             {
-                MessageBox.Show("Equipment Name, Type, and Hub are all required.",
+                MessageBox.Show("Equipment Type is required.",
                     "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -100,19 +92,12 @@ namespace SmartWorkspace
                 {
                     con.Open();
 
-                    string sql =
-                        "UPDATE Equipment " +
-                        "SET    EquipmentName = @EquipmentName, " +
-                        "       EquipmentType = @EquipmentType, " +
-                        "       HubName       = @HubName " +
-                        "WHERE  EquipmentID = @EquipmentID";
+                    string sql = "UPDATE Equipments SET type = @type WHERE id = @id";
 
                     using (SqlCommand cmd = new SqlCommand(sql, con))
                     {
-                        cmd.Parameters.AddWithValue("@EquipmentName", txtName.Text.Trim());
-                        cmd.Parameters.AddWithValue("@EquipmentType", txtType.Text.Trim());
-                        cmd.Parameters.AddWithValue("@HubName",       txtHub.Text.Trim());
-                        cmd.Parameters.AddWithValue("@EquipmentID",   _selectedEquipmentID);
+                        cmd.Parameters.AddWithValue("@type", cmbType.SelectedItem.ToString());
+                        cmd.Parameters.AddWithValue("@id",   _selectedEquipmentID);
                         cmd.ExecuteNonQuery();
                     }
                 }
@@ -152,11 +137,11 @@ namespace SmartWorkspace
                 {
                     con.Open();
 
-                    string sql = "DELETE FROM Equipment WHERE EquipmentID = @EquipmentID";
+                    string sql = "DELETE FROM Equipments WHERE id = @id";
 
                     using (SqlCommand cmd = new SqlCommand(sql, con))
                     {
-                        cmd.Parameters.AddWithValue("@EquipmentID", _selectedEquipmentID);
+                        cmd.Parameters.AddWithValue("@id", _selectedEquipmentID);
                         cmd.ExecuteNonQuery();
                     }
                 }
@@ -190,9 +175,9 @@ namespace SmartWorkspace
                     con.Open();
 
                     string sql =
-                        "SELECT EquipmentID, EquipmentName, EquipmentType, HubName " +
-                        "FROM   Equipment " +
-                        "ORDER  BY HubName, EquipmentName";
+                        "SELECT id, type " +
+                        "FROM   Equipments " +
+                        "ORDER  BY type, id";
 
                     using (SqlDataAdapter da = new SqlDataAdapter(sql, con))
                     {
@@ -212,11 +197,8 @@ namespace SmartWorkspace
         // ── ClearFields ───────────────────────────────────────
         private void ClearFields()
         {
-            txtName.Clear();
-            txtType.Clear();
-            txtHub.Clear();
+            if (cmbType.Items.Count > 0) cmbType.SelectedIndex = 0;
             _selectedEquipmentID = 0;
-            txtName.Focus();
         }
     }
 }

@@ -10,7 +10,7 @@ namespace SmartWorkspace
 {
     public partial class MembersForm : Form
     {
-        private int _selectedMemberID = 0;
+        private long _selectedMemberID = 0;
 
         // ── Constructor ──────────────────────────────────────
         public MembersForm()
@@ -25,10 +25,10 @@ namespace SmartWorkspace
             if (dataGridView1.SelectedRows.Count == 0) return;
 
             DataGridViewRow row = dataGridView1.SelectedRows[0];
-            _selectedMemberID   = Convert.ToInt32(row.Cells["MemberID"].Value);
-            txtName.Text        = row.Cells["FullName"].Value?.ToString() ?? "";
-            txtDigitalID.Text   = row.Cells["DigitalID"].Value?.ToString() ?? "";
-            txtAffiliation.Text = row.Cells["CorporateAffiliation"].Value?.ToString() ?? "";
+            _selectedMemberID   = Convert.ToInt64(row.Cells["id"].Value);
+            txtName.Text        = row.Cells["name"].Value?.ToString() ?? "";
+            txtDigitalID.Text   = row.Cells["digital_identification"].Value?.ToString() ?? "";
+            txtAffiliation.Text = row.Cells["corporate_affiliation"].Value?.ToString() ?? "";
         }
 
         // ── btnAdd_Click ─────────────────────────────────────
@@ -48,14 +48,14 @@ namespace SmartWorkspace
                     con.Open();
 
                     string sql =
-                        "INSERT INTO Member (FullName, DigitalID, CorporateAffiliation) " +
-                        "VALUES (@FullName, @DigitalID, @CorporateAffiliation)";
+                        "INSERT INTO Members (name, digital_identification, corporate_affiliation) " +
+                        "VALUES (@name, @digital_identification, @corporate_affiliation)";
 
                     using (SqlCommand cmd = new SqlCommand(sql, con))
                     {
-                        cmd.Parameters.AddWithValue("@FullName",             txtName.Text.Trim());
-                        cmd.Parameters.AddWithValue("@DigitalID",            txtDigitalID.Text.Trim());
-                        cmd.Parameters.AddWithValue("@CorporateAffiliation", txtAffiliation.Text.Trim());
+                        cmd.Parameters.AddWithValue("@name",                  txtName.Text.Trim());
+                        cmd.Parameters.AddWithValue("@digital_identification", txtDigitalID.Text.Trim());
+                        cmd.Parameters.AddWithValue("@corporate_affiliation",  txtAffiliation.Text.Trim());
                         cmd.ExecuteNonQuery();
                     }
                 }
@@ -97,18 +97,18 @@ namespace SmartWorkspace
                     con.Open();
 
                     string sql =
-                        "UPDATE Member " +
-                        "SET    FullName             = @FullName, " +
-                        "       DigitalID            = @DigitalID, " +
-                        "       CorporateAffiliation = @CorporateAffiliation " +
-                        "WHERE  MemberID = @MemberID";
+                        "UPDATE Members " +
+                        "SET    name                   = @name, " +
+                        "       digital_identification = @digital_identification, " +
+                        "       corporate_affiliation  = @corporate_affiliation " +
+                        "WHERE  id = @id";
 
                     using (SqlCommand cmd = new SqlCommand(sql, con))
                     {
-                        cmd.Parameters.AddWithValue("@FullName",             txtName.Text.Trim());
-                        cmd.Parameters.AddWithValue("@DigitalID",            txtDigitalID.Text.Trim());
-                        cmd.Parameters.AddWithValue("@CorporateAffiliation", txtAffiliation.Text.Trim());
-                        cmd.Parameters.AddWithValue("@MemberID",             _selectedMemberID);
+                        cmd.Parameters.AddWithValue("@name",                  txtName.Text.Trim());
+                        cmd.Parameters.AddWithValue("@digital_identification", txtDigitalID.Text.Trim());
+                        cmd.Parameters.AddWithValue("@corporate_affiliation",  txtAffiliation.Text.Trim());
+                        cmd.Parameters.AddWithValue("@id",                    _selectedMemberID);
                         cmd.ExecuteNonQuery();
                     }
                 }
@@ -148,11 +148,11 @@ namespace SmartWorkspace
                 {
                     con.Open();
 
-                    string sql = "DELETE FROM Member WHERE MemberID = @MemberID";
+                    string sql = "DELETE FROM Members WHERE id = @id";
 
                     using (SqlCommand cmd = new SqlCommand(sql, con))
                     {
-                        cmd.Parameters.AddWithValue("@MemberID", _selectedMemberID);
+                        cmd.Parameters.AddWithValue("@id", _selectedMemberID);
                         cmd.ExecuteNonQuery();
                     }
                 }
@@ -186,10 +186,9 @@ namespace SmartWorkspace
                     con.Open();
 
                     string sql =
-                        "SELECT MemberID, FullName, DigitalID, " +
-                        "       CorporateAffiliation, TotalReservedHours " +
-                        "FROM   Member " +
-                        "ORDER  BY FullName";
+                        "SELECT id, name, digital_identification, corporate_affiliation " +
+                        "FROM   Members " +
+                        "ORDER  BY name";
 
                     using (SqlDataAdapter da = new SqlDataAdapter(sql, con))
                     {
