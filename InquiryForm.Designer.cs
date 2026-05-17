@@ -26,6 +26,7 @@ namespace SmartWorkspace
             // Row 2 buttons
             this.btnMostVariedEquipment  = new System.Windows.Forms.Button();
             this.btnEquipmentByHub       = new System.Windows.Forms.Button();
+            this.btnMemberHours          = new System.Windows.Forms.Button();
 
             this.lblResult               = new System.Windows.Forms.Label();
             this.dataGridView1           = new System.Windows.Forms.DataGridView();
@@ -82,6 +83,15 @@ namespace SmartWorkspace
             this.btnEquipmentByHub.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnEquipmentByHub.Click    += new System.EventHandler(this.btnEquipmentByHub_Click);
 
+            this.btnMemberHours.Text      = "Member Profile + Total Hours";
+            this.btnMemberHours.Font      = new System.Drawing.Font("Segoe UI", 9F);
+            this.btnMemberHours.Location  = new System.Drawing.Point(555, 105);
+            this.btnMemberHours.Size      = new System.Drawing.Size(210, 38);
+            this.btnMemberHours.BackColor = System.Drawing.Color.FromArgb(40, 167, 69);
+            this.btnMemberHours.ForeColor = System.Drawing.Color.White;
+            this.btnMemberHours.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnMemberHours.Click    += new System.EventHandler(this.btnMemberHours_Click);
+
             // ── lblResult ─────────────────────────────────────
             this.lblResult.AutoSize  = false;
             this.lblResult.Text      = "Click a button above to run a query.";
@@ -113,6 +123,7 @@ namespace SmartWorkspace
             this.Controls.Add(this.btnNoReservationHubs);
             this.Controls.Add(this.btnMostVariedEquipment);
             this.Controls.Add(this.btnEquipmentByHub);
+            this.Controls.Add(this.btnMemberHours);
             this.Controls.Add(this.lblResult);
             this.Controls.Add(this.dataGridView1);
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
@@ -127,6 +138,7 @@ namespace SmartWorkspace
         private System.Windows.Forms.Button       btnNoReservationHubs;
         private System.Windows.Forms.Button       btnMostVariedEquipment;
         private System.Windows.Forms.Button       btnEquipmentByHub;
+        private System.Windows.Forms.Button       btnMemberHours;
         private System.Windows.Forms.Label        lblResult;
         private System.Windows.Forms.DataGridView dataGridView1;
     }
