@@ -4,6 +4,7 @@
 using System;
 using System.Data;
 using System.Data.SqlClient;
+using System.Drawing;
 using System.Windows.Forms;
 
 namespace SmartWorkspace
@@ -83,15 +84,16 @@ namespace SmartWorkspace
         private void btnNoReservationHubs_Click(object sender, EventArgs e)
         {
             string sql =
-                "SELECT DISTINCT h.name AS [Hub Name] " +
-                "FROM   Hubs h " +
-                "JOIN   Workspaces w ON w.hub_id = h.id " +
-                "WHERE  w.id NOT IN ( " +
-                "           SELECT r.workspace_id " +
-                "           FROM   Reservations r " +
-                "           WHERE  r.start_date >= DATEADD(MONTH, -1, GETDATE()) " +
-                "       ) " +
-                "ORDER BY h.name";
+    "SELECT h.name AS [Hub Name] " +
+    "FROM Hubs h " +
+    "WHERE NOT EXISTS ( " +
+        "SELECT 1 " +
+        "FROM Workspaces w " +
+        "JOIN Reservations r ON r.workspace_id = w.id " +
+        "WHERE w.hub_id = h.id " +
+        "AND r.start_date >= DATEADD(MONTH, -1, GETDATE()) " +
+    ") " +
+    "ORDER BY h.name";
 
             RunQuery(sql, "Hubs With No Reservations in the Last Month");
         }
