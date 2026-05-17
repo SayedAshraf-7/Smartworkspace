@@ -68,7 +68,4 @@ SmartWorkspace/
 
 ---
 
-## ERD (Entity Relationship Diagram)
-
-<img width="1237" height="589" alt="WhatsApp Image 2026-05-17 at 9 08 35 PM" src="https://github.com/user-attachments/assets/59301f20-f24c-4b4f-acdc-59254e23a9dc" />
 
