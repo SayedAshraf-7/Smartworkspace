@@ -1,294 +1,282 @@
--- ============================================================
--- SMART WORKSPACE DATABASE - COMPLETE SINGLE FILE (FIXED)
--- Fix: Replaced AFTER trigger on Reservation with stored
---      procedures to resolve the SQL Server error:
---      "Target table cannot have enabled triggers if the
---       statement contains an OUTPUT clause without INTO."
--- Run this entire script once in SQL Server Management Studio
--- ============================================================
+-- =========================================
+-- DROP & CREATE DATABASE
+-- =========================================
 
--- Create Database
-CREATE DATABASE SmartWorkspaceDB;
+IF DB_ID('smart_workspace_hub') IS NOT NULL
+BEGIN
+    ALTER DATABASE smart_workspace_hub SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+    DROP DATABASE smart_workspace_hub;
+END
 GO
 
-USE SmartWorkspaceDB;
+CREATE DATABASE smart_workspace_hub;
 GO
 
--- ============================================================
--- TABLE: Member
--- ============================================================
+USE smart_workspace_hub;
+GO
 
-CREATE TABLE Member (
-    MemberID              INT IDENTITY(1,1) PRIMARY KEY,
-    FullName              NVARCHAR(100) NOT NULL,
-    DigitalID             NVARCHAR(50) NULL,
-    CorporateAffiliation  NVARCHAR(150) NULL,
-    TotalReservedHours    INT NOT NULL DEFAULT 0
+-- =========================================
+-- TABLES
+-- =========================================
+
+CREATE TABLE Hubs (
+    id BIGINT IDENTITY(1,1) PRIMARY KEY,
+    name NVARCHAR(255) NOT NULL,
+    specific_district NVARCHAR(255) NOT NULL,
+    architectural_layout NVARCHAR(MAX) NOT NULL
 );
 GO
 
--- ============================================================
--- TABLE: Workspace
--- ============================================================
+CREATE TABLE Workspaces (
+    id BIGINT IDENTITY(1,1) PRIMARY KEY,
 
-CREATE TABLE Workspace (
-    WorkspaceID   INT IDENTITY(1,1) PRIMARY KEY,
-    WorkspaceType NVARCHAR(50) NOT NULL,
-    HubName       NVARCHAR(100) NOT NULL,
-    PricePerHour  DECIMAL(10,2) NOT NULL,
-    Status        NVARCHAR(20) NOT NULL
-);
-GO
+    type NVARCHAR(50) NOT NULL
+        CHECK (type IN (
+            'private_office',
+            'open_desk',
+            'meeting_pod'
+        )),
 
--- ============================================================
--- TABLE: Reservation
--- ============================================================
+    status NVARCHAR(50) NOT NULL
+        CHECK (status IN (
+            'available',
+            'reserved',
+            'maintenance'
+        )),
 
-CREATE TABLE Reservation (
-    ReservationID   INT IDENTITY(1,1) PRIMARY KEY,
-    MemberID        INT NOT NULL,
-    WorkspaceID     INT NOT NULL,
-    ReservationDate DATE NOT NULL,
-    HoursReserved   INT NOT NULL,
-    Status          NVARCHAR(20) NOT NULL DEFAULT 'Running',
+    hub_id BIGINT NOT NULL,
 
-    CONSTRAINT CK_Reservation_Status
-        CHECK (Status IN ('Running', 'Finished')),
+    hourly_rate BIGINT NOT NULL,
+    daily_rate BIGINT NOT NULL,
 
-    CONSTRAINT FK_Reservation_Member
-        FOREIGN KEY (MemberID)
-        REFERENCES Member(MemberID)
-        ON DELETE CASCADE,
-
-    CONSTRAINT FK_Reservation_Workspace
-        FOREIGN KEY (WorkspaceID)
-        REFERENCES Workspace(WorkspaceID)
+    CONSTRAINT FK_Workspaces_Hubs
+        FOREIGN KEY (hub_id)
+        REFERENCES Hubs(id)
         ON DELETE CASCADE
 );
 GO
 
--- ============================================================
--- TABLE: Equipment
--- ============================================================
+CREATE TABLE Members (
+    id BIGINT IDENTITY(1,1) PRIMARY KEY,
 
-CREATE TABLE Equipment (
-    EquipmentID    INT IDENTITY(1,1) PRIMARY KEY,
-    EquipmentName  NVARCHAR(100) NOT NULL,
-    EquipmentType  NVARCHAR(50) NOT NULL DEFAULT 'General',
-    HubName        NVARCHAR(100) NOT NULL DEFAULT 'Unknown'
+    name NVARCHAR(255) NOT NULL,
+
+    corporate_affiliation NVARCHAR(255) NOT NULL,
+
+    digital_identification NVARCHAR(255) NOT NULL UNIQUE
 );
 GO
 
--- ============================================================
--- TABLE: ReservationEquipment
--- ============================================================
+CREATE TABLE Equipments (
+    id BIGINT IDENTITY(1,1) PRIMARY KEY,
 
-CREATE TABLE ReservationEquipment (
-    ID            INT IDENTITY(1,1) PRIMARY KEY,
-    ReservationID INT NOT NULL,
-    EquipmentID   INT NOT NULL,
+    type NVARCHAR(50) NOT NULL
+        CHECK (type IN (
+            'projector',
+            'standing_desk',
+            'monitor',
+            'speaker',
+            'webcam'
+        ))
+);
+GO
 
-    CONSTRAINT FK_RE_Reservation
-        FOREIGN KEY (ReservationID)
-        REFERENCES Reservation(ReservationID)
+CREATE TABLE Reservations (
+    id BIGINT IDENTITY(1,1) PRIMARY KEY,
+
+    pricing_type NVARCHAR(50) NOT NULL
+        CHECK (pricing_type IN (
+            'hourly',
+            'daily'
+        )),
+
+    duration BIGINT NOT NULL,
+
+    start_date DATETIME NOT NULL,
+    end_date DATETIME NOT NULL,
+
+    member_id BIGINT NOT NULL,
+    workspace_id BIGINT NOT NULL,
+
+    number_of_equipments BIGINT NOT NULL DEFAULT 0,
+
+    status NVARCHAR(20) NOT NULL DEFAULT 'running'
+        CHECK (status IN (
+            'running',
+            'finished',
+            'cancelled'
+        )),
+
+    CONSTRAINT CK_Reservations_DateRange
+        CHECK (end_date > start_date),
+
+    CONSTRAINT FK_Reservations_Members
+        FOREIGN KEY (member_id)
+        REFERENCES Members(id)
         ON DELETE CASCADE,
 
-    CONSTRAINT FK_RE_Equipment
-        FOREIGN KEY (EquipmentID)
-        REFERENCES Equipment(EquipmentID)
+    CONSTRAINT FK_Reservations_Workspaces
+        FOREIGN KEY (workspace_id)
+        REFERENCES Workspaces(id)
         ON DELETE CASCADE
 );
 GO
 
--- ============================================================
--- HELPER: Internal procedure to recalculate TotalReservedHours
--- Called by all Reservation stored procedures below
--- ============================================================
+CREATE TABLE Reserved_equipments (
+    id BIGINT IDENTITY(1,1) PRIMARY KEY,
 
-CREATE OR ALTER PROCEDURE sp_RefreshMemberHours
-    @MemberID INT
+    equipment_id BIGINT NOT NULL,
+    reservation_id BIGINT NOT NULL,
+
+    duration BIGINT NOT NULL,
+
+    CONSTRAINT FK_ReservedEquipments_Equipments
+        FOREIGN KEY (equipment_id)
+        REFERENCES Equipments(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT FK_ReservedEquipments_Reservations
+        FOREIGN KEY (reservation_id)
+        REFERENCES Reservations(id)
+        ON DELETE CASCADE
+);
+GO
+
+-- =========================================
+-- TRIGGERS
+-- =========================================
+
+CREATE TRIGGER trg_reserved_equipment_insert
+ON Reserved_equipments
+AFTER INSERT
 AS
 BEGIN
-    SET NOCOUNT ON;
-    UPDATE Member
-    SET TotalReservedHours = ISNULL(
-        (SELECT SUM(HoursReserved) FROM Reservation WHERE MemberID = @MemberID),
-        0
+    UPDATE Reservations
+    SET number_of_equipments = (
+        SELECT COUNT(*)
+        FROM Reserved_equipments re
+        WHERE re.reservation_id = Reservations.id
     )
-    WHERE MemberID = @MemberID;
+    WHERE id IN (
+        SELECT DISTINCT reservation_id
+        FROM inserted
+    );
 END;
 GO
 
--- ============================================================
--- STORED PROCEDURE: Insert Reservation
--- Returns the new ReservationID via SCOPE_IDENTITY()
--- Use this instead of a direct INSERT to avoid the OUTPUT
--- clause conflict that was caused by the AFTER trigger.
--- ============================================================
-
-CREATE OR ALTER PROCEDURE sp_InsertReservation
-    @MemberID        INT,
-    @WorkspaceID     INT,
-    @ReservationDate DATE,
-    @HoursReserved   INT,
-    @Status          NVARCHAR(20) = 'Running'
+CREATE TRIGGER trg_reserved_equipment_delete
+ON Reserved_equipments
+AFTER DELETE
 AS
 BEGIN
-    SET NOCOUNT ON;
-
-    INSERT INTO Reservation (MemberID, WorkspaceID, ReservationDate, HoursReserved, Status)
-    VALUES (@MemberID, @WorkspaceID, @ReservationDate, @HoursReserved, @Status);
-
-    DECLARE @NewID INT = SCOPE_IDENTITY();
-
-    -- Recalculate total hours for this member
-    EXEC sp_RefreshMemberHours @MemberID;
-
-    -- Return the new ReservationID to the caller
-    SELECT @NewID AS ReservationID;
+    UPDATE Reservations
+    SET number_of_equipments = (
+        SELECT COUNT(*)
+        FROM Reserved_equipments re
+        WHERE re.reservation_id = Reservations.id
+    )
+    WHERE id IN (
+        SELECT DISTINCT reservation_id
+        FROM deleted
+    );
 END;
 GO
 
--- ============================================================
--- STORED PROCEDURE: Update Reservation
--- ============================================================
+-- =========================================
+-- DUMMY DATA
+-- =========================================
 
-CREATE OR ALTER PROCEDURE sp_UpdateReservation
-    @ReservationID   INT,
-    @MemberID        INT,
-    @WorkspaceID     INT,
-    @ReservationDate DATE,
-    @HoursReserved   INT,
-    @Status          NVARCHAR(20)
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    -- Capture old MemberID in case it changed
-    DECLARE @OldMemberID INT;
-    SELECT @OldMemberID = MemberID FROM Reservation WHERE ReservationID = @ReservationID;
-
-    UPDATE Reservation
-    SET MemberID        = @MemberID,
-        WorkspaceID     = @WorkspaceID,
-        ReservationDate = @ReservationDate,
-        HoursReserved   = @HoursReserved,
-        Status          = @Status
-    WHERE ReservationID = @ReservationID;
-
-    -- Recalculate hours for both old and new member (handles member reassignment)
-    EXEC sp_RefreshMemberHours @OldMemberID;
-    IF @OldMemberID <> @MemberID
-        EXEC sp_RefreshMemberHours @MemberID;
-END;
-GO
-
--- ============================================================
--- STORED PROCEDURE: Delete Reservation
--- ============================================================
-
-CREATE OR ALTER PROCEDURE sp_DeleteReservation
-    @ReservationID INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    DECLARE @MemberID INT;
-    SELECT @MemberID = MemberID FROM Reservation WHERE ReservationID = @ReservationID;
-
-    DELETE FROM Reservation WHERE ReservationID = @ReservationID;
-
-    -- Recalculate total hours after deletion
-    EXEC sp_RefreshMemberHours @MemberID;
-END;
-GO
-
--- ============================================================
--- SAMPLE DATA: Member
--- ============================================================
-
-INSERT INTO Member (FullName, DigitalID, CorporateAffiliation)
+-- Hubs
+INSERT INTO Hubs
+(name, specific_district, architectural_layout)
 VALUES
-('Ahmed Hassan', 'D001', 'TechCo'),
-('Sara Ali',     'D002', 'StartupHub'),
-('Omar Khaled',  'D003', 'FreelanceInc'),
-('Nora Samir',   'D004', 'DesignStudio'),
-('Karim Mostafa','D005', NULL);
+('Downtown Tech Hub', 'Nasr City', 'Modern glass architecture with open collaboration areas'),
+('Creative Space Hub', 'Maadi', 'Industrial minimalist design with private offices'),
+('Innovation Hub', 'New Cairo', 'Smart eco-friendly workspace with modular rooms');
 GO
 
--- ============================================================
--- SAMPLE DATA: Workspace
--- ============================================================
-
-INSERT INTO Workspace (WorkspaceType, HubName, PricePerHour, Status)
+-- Workspaces
+INSERT INTO Workspaces
+(type, status, hub_id, hourly_rate, daily_rate)
 VALUES
-('Private Office', 'Downtown Hub',    50.00, 'Available'),
-('Open Desk',      'Cairo Hub',       20.00, 'Available'),
-('Meeting Room',   'Giza Hub',        80.00, 'Available'),
-('Private Office', 'Cairo Hub',       55.00, 'Available'),
-('Open Desk',      'Downtown Hub',    18.00, 'Available'),
-('Meeting Room',   'Alexandria Hub',  75.00, 'Available');
+('private_office', 'available', 1, 100, 700),
+('open_desk', 'available', 1, 50, 300),
+('meeting_pod', 'reserved', 2, 80, 500),
+('private_office', 'maintenance', 3, 120, 850),
+('open_desk', 'available', 2, 40, 250);
 GO
 
--- ============================================================
--- SAMPLE DATA: Equipment
--- ============================================================
-
-INSERT INTO Equipment (EquipmentName, EquipmentType, HubName)
+-- Members
+INSERT INTO Members
+(name, corporate_affiliation, digital_identification)
 VALUES
-('Projector',                  'AV',        'Downtown Hub'),
-('Whiteboard',                 'Office',    'Cairo Hub'),
-('Video Conferencing System',  'AV',        'Giza Hub'),
-('Standing Desk',              'Furniture', 'Cairo Hub'),
-('Printer',                    'Office',    'Downtown Hub');
+('Alaa Okasha', 'Google', 'DIGI-1001'),
+('Sarah Ahmed', 'Microsoft', 'DIGI-1002'),
+('Omar Khaled', 'Amazon', 'DIGI-1003'),
+('Mona Adel', 'IBM', 'DIGI-1004');
 GO
 
--- ============================================================
--- SAMPLE DATA: Reservation
--- Uses stored procedure so TotalReservedHours is kept in sync
--- ============================================================
-
-EXEC sp_InsertReservation 1, 1, '2025-01-10', 3, 'Running';
-EXEC sp_InsertReservation 2, 2, '2025-01-11', 5, 'Running';
-EXEC sp_InsertReservation 1, 3, '2025-01-12', 2, 'Finished';
-EXEC sp_InsertReservation 3, 4, '2025-01-13', 4, 'Running';
-EXEC sp_InsertReservation 2, 5, '2025-01-14', 6, 'Finished';
-GO
-
--- ============================================================
--- SAMPLE DATA: ReservationEquipment
--- ============================================================
-
-INSERT INTO ReservationEquipment (ReservationID, EquipmentID)
+-- Equipments
+INSERT INTO Equipments (type)
 VALUES
-(1, 1),
-(1, 2),
-(3, 3),
-(4, 2),
-(5, 1);
+('projector'),
+('standing_desk'),
+('monitor'),
+('speaker'),
+('webcam');
 GO
 
--- ============================================================
--- NOTE: The AFTER trigger (trg_UpdateTotalHours) has been
--- intentionally REMOVED. SQL Server does not allow an AFTER
--- trigger on a table that is the target of a DML statement
--- using OUTPUT without INTO — which is what caused the error.
---
--- TotalReservedHours is now maintained by:
---   sp_InsertReservation  ? use instead of direct INSERT
---   sp_UpdateReservation  ? use instead of direct UPDATE
---   sp_DeleteReservation  ? use instead of direct DELETE
---
--- In your application, replace direct SQL like:
---   INSERT INTO Reservation (...) OUTPUT INSERTED.ReservationID VALUES (...)
--- With a stored procedure call:
---   EXEC sp_InsertReservation @MemberID, @WorkspaceID, @Date, @Hours, @Status
--- The procedure returns the new ReservationID via SELECT.
--- ============================================================
+-- Reservations
+INSERT INTO Reservations
+(
+    pricing_type,
+    duration,
+    start_date,
+    end_date,
+    member_id,
+    workspace_id,
+    status
+)
+VALUES
+(
+    'hourly',
+    3,
+    '2026-05-17 09:00:00',
+    '2026-05-17 12:00:00',
+    1,
+    1,
+    'running'
+),
+(
+    'hourly',
+    10,
+    '2026-05-18 08:00:00',
+    '2026-05-18 18:00:00',
+    2,
+    3,
+    'running'
+),
+(
+    'hourly',
+    5,
+    '2026-05-19 10:00:00',
+    '2026-05-19 15:00:00',
+    3,
+    2,
+    'running'
+);
+GO
 
-PRINT '================================================';
-PRINT 'SmartWorkspaceDB created successfully (FIXED).';
-PRINT 'OUTPUT clause conflict resolved via stored procs.';
-PRINT 'Database is fully ready to use.';
-PRINT '================================================';
+-- Reserved Equipments
+INSERT INTO Reserved_equipments
+(equipment_id, reservation_id, duration)
+VALUES
+(1, 1, 3),
+(2, 1, 3),
+
+(3, 2, 1),
+
+(1, 3, 5),
+(4, 3, 5),
+(5, 3, 5);
 GO
