@@ -94,9 +94,10 @@ namespace SmartWorkspace
             this.cmbPricingType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbPricingType.Font          = new System.Drawing.Font("Segoe UI", 10F);
             this.cmbPricingType.Items.AddRange(new object[] { "hourly", "daily" });
-            this.cmbPricingType.SelectedIndex = 0;
-            this.cmbPricingType.Location      = new System.Drawing.Point(140, 219);
-            this.cmbPricingType.Size          = new System.Drawing.Size(140, 24);
+            this.cmbPricingType.SelectedIndex          = 0;
+            this.cmbPricingType.Location               = new System.Drawing.Point(140, 219);
+            this.cmbPricingType.Size                   = new System.Drawing.Size(140, 24);
+            this.cmbPricingType.SelectedIndexChanged  += new System.EventHandler(this.RecalculateDuration_Event);
 
             // ── lblStart ──────────────────────────────────────
             this.lblStart.AutoSize = true;
@@ -108,9 +109,10 @@ namespace SmartWorkspace
             this.dtpStart.Font          = new System.Drawing.Font("Segoe UI", 10F);
             this.dtpStart.Format        = System.Windows.Forms.DateTimePickerFormat.Custom;
             this.dtpStart.CustomFormat  = "yyyy-MM-dd HH:mm";
-            this.dtpStart.ShowUpDown    = false;
+            this.dtpStart.ShowUpDown    = true;
             this.dtpStart.Location      = new System.Drawing.Point(140, 255);
             this.dtpStart.Size          = new System.Drawing.Size(170, 24);
+            this.dtpStart.ValueChanged += new System.EventHandler(this.RecalculateDuration_Event);
 
             // ── lblEnd ────────────────────────────────────────
             this.lblEnd.AutoSize = true;
@@ -122,8 +124,10 @@ namespace SmartWorkspace
             this.dtpEnd.Font          = new System.Drawing.Font("Segoe UI", 10F);
             this.dtpEnd.Format        = System.Windows.Forms.DateTimePickerFormat.Custom;
             this.dtpEnd.CustomFormat  = "yyyy-MM-dd HH:mm";
+            this.dtpEnd.ShowUpDown    = true;
             this.dtpEnd.Location      = new System.Drawing.Point(370, 255);
             this.dtpEnd.Size          = new System.Drawing.Size(170, 24);
+            this.dtpEnd.ValueChanged += new System.EventHandler(this.RecalculateDuration_Event);
 
             // ── lblDuration ───────────────────────────────────
             this.lblDuration.AutoSize = true;
@@ -132,9 +136,12 @@ namespace SmartWorkspace
             this.lblDuration.Location = new System.Drawing.Point(15, 294);
 
             // ── txtDuration ───────────────────────────────────
-            this.txtDuration.Font     = new System.Drawing.Font("Segoe UI", 10F);
-            this.txtDuration.Location = new System.Drawing.Point(140, 291);
-            this.txtDuration.Size     = new System.Drawing.Size(100, 24);
+            this.txtDuration.Font      = new System.Drawing.Font("Segoe UI", 10F);
+            this.txtDuration.Location  = new System.Drawing.Point(140, 291);
+            this.txtDuration.Size      = new System.Drawing.Size(100, 24);
+            this.txtDuration.ReadOnly  = true;
+            this.txtDuration.BackColor = System.Drawing.SystemColors.Control;
+            this.txtDuration.Text      = "0";
 
             // ── lblStatus ─────────────────────────────────────
             this.lblStatus.AutoSize = true;

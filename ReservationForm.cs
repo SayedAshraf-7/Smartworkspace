@@ -27,6 +27,26 @@ namespace SmartWorkspace
             LoadWorkspacesCombo();
             LoadEquipmentList();
             LoadReservations();
+            RecalculateDuration_Event(this, EventArgs.Empty);
+        }
+
+        // ── Auto-calculate Duration from Start/End + Pricing ─
+        private void RecalculateDuration_Event(object sender, EventArgs e)
+        {
+            if (cmbPricingType == null || cmbPricingType.SelectedItem == null) return;
+
+            TimeSpan span = dtpEnd.Value - dtpStart.Value;
+            if (span.TotalSeconds <= 0)
+            {
+                txtDuration.Text = "0";
+                return;
+            }
+
+            long duration = cmbPricingType.SelectedItem.ToString() == "daily"
+                ? (long)Math.Ceiling(span.TotalDays)
+                : (long)Math.Ceiling(span.TotalHours);
+
+            txtDuration.Text = duration.ToString();
         }
 
         // ── Row selected → sync Status combo ─────────────────
@@ -222,8 +242,8 @@ namespace SmartWorkspace
                 MessageBox.Show("Reservation added successfully!",
                     "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-                txtDuration.Clear();
                 cmbResStatus.SelectedIndex = 0;
+                RecalculateDuration_Event(this, EventArgs.Empty);
                 for (int i = 0; i < clbEquipment.Items.Count; i++)
                     clbEquipment.SetItemChecked(i, false);
                 LoadMembersCombo();
