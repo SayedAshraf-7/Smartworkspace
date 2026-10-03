@@ -33,7 +33,7 @@ SmartWorkspace is a Windows Forms desktop application for managing coworking spa
 ## Setup Instructions
 
 1. Open SQL Server Management Studio.
-2. Run the `CreateDB.sql` script.
+2. Run the `DatabaseMigration.sql` script.
 3. Open `DB.cs` and confirm the SQL Server connection string.
 4. Open `SmartWorkspace.sln` in Visual Studio.
 5. Build the solution.
